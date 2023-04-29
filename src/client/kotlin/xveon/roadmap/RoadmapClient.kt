@@ -12,7 +12,6 @@ import net.minecraft.client.MinecraftClient
 import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.client.option.KeyBinding
 import net.minecraft.client.util.InputUtil
-import net.minecraft.network.message.MessageType
 import net.minecraft.registry.Registries
 import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
@@ -24,9 +23,10 @@ import java.util.*
 object RoadmapClient : ClientModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
     private lateinit var kbScan: KeyBinding
-    private lateinit var kbReload: KeyBinding
+    private lateinit var kbUi: KeyBinding
     private var map = RMMap()
     private var config = RMConfig()
+    private var ui = RoadmapUI()
 
     override fun onInitializeClient() {
         // This entrypoint is suitable for setting up client-specific logic, such as rendering.
@@ -55,9 +55,9 @@ object RoadmapClient : ClientModInitializer {
             )
         )
 
-        kbReload = KeyBindingHelper.registerKeyBinding(
+        kbUi = KeyBindingHelper.registerKeyBinding(
             KeyBinding(
-                "key.roadmap.reload",  // The translation key of the keybinding's name
+                "key.roadmap.ui",  // The translation key of the keybinding's name
                 InputUtil.Type.KEYSYM,  // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
                 GLFW.GLFW_KEY_G,  // The keycode of the key
                 "category.roadmap.main" // The translation key of the keybinding's category.
@@ -69,7 +69,6 @@ object RoadmapClient : ClientModInitializer {
                 val player: ClientPlayerEntity = MinecraftClient.getInstance().player ?: break
                 logger.info("Scanning surrounding blocks...")
                 val scanner = RMScanner(map)
-                logger.info(scanner.getFloor(player.blockPos, Pair(0, 24), player)?.name)
                 val startBlockCount = map.getBlockCount()
                 scanner.scan(player, config.scanRadius, config.scanHeight, config.roadBlocks)
                 val endBlockCount = map.getBlockCount()
@@ -86,14 +85,9 @@ object RoadmapClient : ClientModInitializer {
         })
 
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
-            while (kbReload.wasPressed()) {
-                val player: ClientPlayerEntity = MinecraftClient.getInstance().player ?: break
-                logger.info("Reloading config...")
-                config.loadFile("config.json")
-                config.saveFile("config.json")
-                logger.info("Reloading scan data...")
-                map = RMMap.readFiles("scan/")
-                displayPopupText("Reloaded config and scan data", player)
+            while (kbUi.wasPressed()) {
+                logger.info("Opening ui...")
+                ui.init(client, 100, 100)
             }
         })
     }

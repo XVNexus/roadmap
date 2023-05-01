@@ -10,31 +10,40 @@ object Config {
     // How much to scan up or down when finding the surface at the player position and finding block clearance
     // (distance to ceiling)
     var scanHeight = 16
-    // The maximum block height difference for the scanner to crawl up/down hills
-    // (a block height difference higher than this will just cause the scanner to skip scanning past that point)
-    var scanSlope = 2
-    // The radius to search around found road blocks for other road blocks
-    var adjacentRadius = 2
     // The list of block ids which are considered as "road"
     var roadBlocks = mutableListOf("minecraft:gravel", "minecraft:dirt_path")
 
+    // Which blocks are considered solid
+    var solidBlocks = mutableListOf<String>()
+    // Which blocks are considered not solid
+    var transparentBlocks = mutableListOf("minecraft:snow")
+
     val gson = Gson()
 
-    fun saveFile(path: String) {
+    fun saveFile() {
         val json = JsonObject()
         json.add("scanRadius", JsonPrimitive(scanRadius))
         json.add("scanHeight", JsonPrimitive(scanHeight))
-        json.add("adjacentRadius", JsonPrimitive(adjacentRadius))
-        json.add("roadBlocks", JsonPrimitive(roadBlocks.joinToString(", ")))
-        FS.writeFile(path, json.toString())
+        json.add("roadBlocks", JsonPrimitive(roadBlocks.joinToString(",")))
+        json.add("solidBlocks", JsonPrimitive(solidBlocks.joinToString(",")))
+        json.add("transparentBlocks", JsonPrimitive(transparentBlocks.joinToString(",")))
+        FS.writeFile(Constants.CONFIG_FILE_PATH, json.toString())
     }
 
-    fun loadFile(path: String) {
-        val content = FS.readFile(path)
+    fun loadFile() {
+        if (!FS.containsFile(Constants.CONFIG_FILE_PATH))
+            return
+        val content = FS.readFile(Constants.CONFIG_FILE_PATH)
         val json = gson.fromJson(content, JsonObject::class.java) ?: return
-        scanRadius = json.getAsJsonPrimitive("scanRadius").asInt
-        scanHeight = json.getAsJsonPrimitive("scanHeight").asInt
-        adjacentRadius = json.getAsJsonPrimitive("adjacentRadius").asInt
-        roadBlocks = json.getAsJsonPrimitive("roadBlocks").asString.split(", ").toMutableList()
+        scanRadius = loadProperty(json, "scanRadius")?.asInt ?: scanRadius
+        scanHeight = loadProperty(json, "scanHeight")?.asInt ?: scanHeight
+        roadBlocks = loadProperty(json, "roadBlocks")?.asString?.split(",")?.toMutableList() ?: roadBlocks
+        solidBlocks = loadProperty(json, "solidBlocks")?.asString?.split(",")?.toMutableList() ?: solidBlocks
+        transparentBlocks = loadProperty(json, "transparentBlocks")?.asString?.split(",")?.toMutableList() ?: transparentBlocks
+    }
+
+    private fun loadProperty(json: JsonObject, property: String): JsonPrimitive? {
+        if (!json.has(property)) return null
+        return json.getAsJsonPrimitive(property)
     }
 }

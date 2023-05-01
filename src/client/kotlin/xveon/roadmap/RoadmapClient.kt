@@ -10,10 +10,12 @@ import net.minecraft.client.util.InputUtil
 import net.minecraft.text.Text
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
+import javax.management.remote.rmi.RMIConnection
 
 object RoadmapClient : ClientModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
     private lateinit var kbScan: KeyBinding
+    private lateinit var kbReload: KeyBinding
     private lateinit var kbUi: KeyBinding
     private var map = RMMap()
     private var ui = RoadmapUI()
@@ -22,16 +24,11 @@ object RoadmapClient : ClientModInitializer {
         // This entrypoint is suitable for setting up client-specific logic, such as rendering.
         logger.info("Initializing roadmap client...")
 
-        if (FS.containsFile(Constants.CONFIG_FILE_PATH)) {
-            logger.info("Found config file, restoring settings to memory...")
-            Config.loadFile(Constants.CONFIG_FILE_PATH)
-        } else {
-            logger.info("Creating new config file...")
-        }
-        Config.saveFile(Constants.CONFIG_FILE_PATH)
+        Config.loadFile()
+        Config.saveFile()
+        logger.info("Loaded config")
 
         if (FS.containsFiles(Constants.SCAN_FOLDER_PATH)) {
-            logger.info("Found previous scan data, restoring to memory...")
             map = RMMap.readFiles()
             logger.info("Loaded ${map.getBlockCount()} previously scanned blocks.")
         }
@@ -45,11 +42,20 @@ object RoadmapClient : ClientModInitializer {
             )
         )
 
+        kbReload = KeyBindingHelper.registerKeyBinding(
+            KeyBinding(
+                "key.roadmap.reload",  // The translation key of the keybinding's name
+                InputUtil.Type.KEYSYM,  // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
+                GLFW.GLFW_KEY_G,  // The keycode of the key
+                "category.roadmap.main" // The translation key of the keybinding's category.
+            )
+        )
+
         kbUi = KeyBindingHelper.registerKeyBinding(
             KeyBinding(
                 "key.roadmap.ui",  // The translation key of the keybinding's name
                 InputUtil.Type.KEYSYM,  // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
-                GLFW.GLFW_KEY_G,  // The keycode of the key
+                GLFW.GLFW_KEY_U,  // The keycode of the key
                 "category.roadmap.main" // The translation key of the keybinding's category.
             )
         )
@@ -71,6 +77,15 @@ object RoadmapClient : ClientModInitializer {
                     logger.info("No new blocks were saved to scan data.")
                     displayPopupText("No new blocks were saved to scan data", player)
                 }
+            }
+        })
+
+        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
+            while (kbReload.wasPressed()) {
+                val player: ClientPlayerEntity = client.player ?: break
+                map = RMMap.readFiles()
+                Config.loadFile()
+                displayPopupText("Reloaded scan data and config", player)
             }
         })
 

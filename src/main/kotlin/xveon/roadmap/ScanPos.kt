@@ -3,12 +3,13 @@ package xveon.roadmap
 import net.minecraft.util.math.BlockPos
 
 data class ScanPos(var x: Int, var y: Int, var z: Int) {
-    fun getAdjPositions(radius: Int): Set<ScanPos> {
-        val result = mutableSetOf<ScanPos>()
-        for (dz in -radius..radius)
-            for (dx in -radius..radius)
-                result.add(ScanPos(x + dx, y, z + dz))
-        return result
+    fun getAdjPositions(): Set<ScanPos> {
+        return setOf(
+            ScanPos(x + 1, y, z),
+            ScanPos(x, y, z + 1),
+            ScanPos(x - 1, y, z),
+            ScanPos(x, y, z - 1),
+        )
     }
 
     fun toBlockPos(): BlockPos {

@@ -22,7 +22,7 @@ class RMScanner(val map: RMMap) {
         map.addBlock(origin)
         q.markScanned(origin.pos)
         // Add blocks adjacent to the origin to the scan queue
-        q.enqueuePending(origin.scanPos.getAdjPositions(Config.adjacentRadius))
+        q.enqueuePending(origin.scanPos.getAdjPositions())
         // Loop through all pending blocks, enqueueing new adjacent blocks when a block is considered "road"
         var i = 0
         while (q.hasPending()) {
@@ -35,7 +35,7 @@ class RMScanner(val map: RMMap) {
                 continue
             }
             // Get the next pending block
-            val next = getFloor(nextPos.toBlockPos(), Pair(Config.scanSlope, Config.scanSlope), player)
+            val next = getFloor(nextPos.toBlockPos(), Pair(1, 1), player)
             // If the block isn't found, mark that position scanned and continue to the next iteration
             if (next == null) {
                 q.markScanned(nextPos)
@@ -51,7 +51,7 @@ class RMScanner(val map: RMMap) {
             q.markScanned(next.scanPos)
             // If it's a road block, add the adjacent blocks to the queue
             if (Config.roadBlocks.contains(next.name))
-                q.enqueuePending(next.scanPos.getAdjPositions(Config.adjacentRadius))
+                q.enqueuePending(next.scanPos.getAdjPositions())
             // If the loop goes on for too long, cancel the scan (already scanned blocks will be saved if the scan is cancelled)
             if (i >= Constants.SCAN_MAX_ITERATIONS) {
                 RoadmapClient.logger.warn("Scan reached ${Constants.SCAN_MAX_ITERATIONS} iterations, stopping early.")
@@ -84,15 +84,17 @@ class RMScanner(val map: RMMap) {
     }
 
     fun isSolid(block: BlockState): Boolean {
-        // TODO: Make lists for overridden opaque and overridden transparent blocks
-        return if (getName(block) == "snow_layer")
+        val name = getName(block)
+        return if (Config.solidBlocks.contains(name))
+            true
+        else if (Config.transparentBlocks.contains(name))
             false
         else
             block.isOpaque
     }
 
     fun getName(block: BlockState): String {
-        return Registries.BLOCK.getId(block.block).toString()
+        return getName(block.block)
     }
 
     fun getName(block: Block): String {

@@ -14,5 +14,5 @@ object Constants {
     const val CHUNK_BIT_SHIFT = 4
 
     // The maximum number of iterations the scanner is allowed to run for
-    const val SCAN_MAX_ITERATIONS = 100000
+    const val MAX_SCAN_ITERATIONS = 100000
 }

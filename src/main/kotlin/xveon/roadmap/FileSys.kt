@@ -2,7 +2,7 @@ package xveon.roadmap
 
 import java.io.File
 
-object FS {
+object FileSys {
     const val basePath = "roadmap/"
 
     fun listFiles(path: String): List<File> {

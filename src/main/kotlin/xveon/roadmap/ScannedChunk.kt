@@ -2,27 +2,27 @@ package xveon.roadmap
 
 import net.minecraft.util.math.BlockPos
 
-data class RMChunk(var pos: ChunkPos) {
-    var blocks = mutableMapOf<BlockPos, RMBlock>()
+data class ScannedChunk(var pos: ChunkPos) {
+    var blocks = mutableMapOf<BlockPos, ScannedBlock>()
 
-    fun getBlock(pos: BlockPos): RMBlock? {
+    fun getBlock(pos: BlockPos): ScannedBlock? {
         return if(containsBlock(pos))
             blocks[pos]
         else
             null
     }
 
-    fun setBlock(block: RMBlock) {
+    fun setBlock(block: ScannedBlock) {
         blocks[block.pos] = block
     }
 
-    fun addBlock(block: RMBlock): Boolean {
+    fun addBlock(block: ScannedBlock): Boolean {
         if (containsBlock(block.pos)) return false
         setBlock(block)
         return true
     }
 
-    fun replaceBlock(block: RMBlock): Boolean {
+    fun replaceBlock(block: ScannedBlock): Boolean {
         if (!containsBlock(block.pos)) return false
         setBlock(block)
         return true
@@ -52,13 +52,13 @@ data class RMChunk(var pos: ChunkPos) {
     }
 
     companion object {
-        fun fromString(value: String): RMChunk {
-            val result = RMChunk(ChunkPos(0, 0))
+        fun fromString(value: String): ScannedChunk {
+            val result = ScannedChunk(ChunkPos(0, 0))
             if (value.isEmpty()) return result
             val lines = value.split('\n')
-            result.pos = ChunkPos.fromBlockPos(RMBlock.fromString(lines[0]).pos)
+            result.pos = ChunkPos.fromBlockPosition(ScannedBlock.fromString(lines[0]).pos)
             for (line in lines)
-                result.addBlock(RMBlock.fromString(line))
+                result.addBlock(ScannedBlock.fromString(line))
             return result
         }
     }

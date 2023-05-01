@@ -10,14 +10,13 @@ import net.minecraft.client.util.InputUtil
 import net.minecraft.text.Text
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
-import javax.management.remote.rmi.RMIConnection
 
 object RoadmapClient : ClientModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
     private lateinit var kbScan: KeyBinding
     private lateinit var kbReload: KeyBinding
     private lateinit var kbUi: KeyBinding
-    private var map = RMMap()
+    private var map = ScannedRoadmap()
     private var ui = RoadmapUI()
 
     override fun onInitializeClient() {
@@ -28,8 +27,8 @@ object RoadmapClient : ClientModInitializer {
         Config.saveFile()
         logger.info("Loaded config")
 
-        if (FS.containsFiles(Constants.SCAN_FOLDER_PATH)) {
-            map = RMMap.readFiles()
+        if (FileSys.containsFiles(Constants.SCAN_FOLDER_PATH)) {
+            map = ScannedRoadmap.readFiles()
             logger.info("Loaded ${map.getBlockCount()} previously scanned blocks.")
         }
 
@@ -64,7 +63,7 @@ object RoadmapClient : ClientModInitializer {
             while (kbScan.wasPressed()) {
                 val player: ClientPlayerEntity = client.player ?: break
                 logger.info("Scanning surrounding blocks...")
-                val scanner = RMScanner(map)
+                val scanner = RoadmapScanner(map)
                 val startBlockCount = map.getBlockCount()
                 scanner.scan(player)
                 val endBlockCount = map.getBlockCount()
@@ -72,10 +71,10 @@ object RoadmapClient : ClientModInitializer {
                 if (newBlocks > 0) {
                     map.writeFiles()
                     logger.info("Saved $newBlocks blocks to scan data.")
-                    displayPopupText("Saved $newBlocks blocks to scan data", player)
+                    notifyPlayer("Saved $newBlocks blocks to scan data", player)
                 } else {
                     logger.info("No new blocks were saved to scan data.")
-                    displayPopupText("No new blocks were saved to scan data", player)
+                    notifyPlayer("No new blocks were saved to scan data", player)
                 }
             }
         })
@@ -83,9 +82,9 @@ object RoadmapClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
             while (kbReload.wasPressed()) {
                 val player: ClientPlayerEntity = client.player ?: break
-                map = RMMap.readFiles()
+                map = ScannedRoadmap.readFiles()
                 Config.loadFile()
-                displayPopupText("Reloaded scan data and config", player)
+                notifyPlayer("Reloaded scan data and config", player)
             }
         })
 
@@ -97,7 +96,7 @@ object RoadmapClient : ClientModInitializer {
         })
     }
 
-    fun displayPopupText(text: String, player: ClientPlayerEntity) {
-        player.sendMessage(Text.literal("Roadmap: $text"), true)
+    fun notifyPlayer(text: String, player: ClientPlayerEntity, chatOrPopup: Boolean = true) {
+        player.sendMessage(Text.literal("Roadmap: $text"), chatOrPopup)
     }
 }

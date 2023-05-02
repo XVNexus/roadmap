@@ -56,7 +56,7 @@ data class ScannedChunk(var pos: ChunkPos) {
             val result = ScannedChunk(ChunkPos(0, 0))
             if (value.isEmpty()) return result
             val lines = value.split('\n')
-            result.pos = ChunkPos.fromBlockPosition(ScannedBlock.fromString(lines[0]).pos)
+            result.pos = ChunkPos.fromBlockPos(ScannedBlock.fromString(lines[0]).pos)
             for (line in lines)
                 result.addBlock(ScannedBlock.fromString(line))
             return result

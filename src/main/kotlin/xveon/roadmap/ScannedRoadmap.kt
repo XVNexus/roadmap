@@ -2,27 +2,27 @@ package xveon.roadmap
 
 import net.minecraft.util.math.BlockPos
 
-class ScannedRoadmap {
-    var scannedChunks = mutableMapOf<ChunkPos, ScannedChunk>()
+class ScannedRoadmap(var name: String = "") {
+    var chunks = mutableMapOf<ChunkPos, ScannedChunk>()
     var chunkFilesToUpdate = mutableMapOf<ChunkPos, Boolean>()
     var chunkFilesToRemove = mutableSetOf<ChunkPos>()
 
     fun getBlockCount(): Int {
         var result = 0
-        for (chunk in scannedChunks.values) result += chunk.blocks.count()
+        for (chunk in chunks.values) result += chunk.blocks.count()
         return result
     }
 
     fun getBlock(pos: BlockPos): ScannedBlock? {
-        val chunkPos = ChunkPos.fromBlockPosition(pos)
+        val chunkPos = ChunkPos.fromBlockPos(pos)
         if (!containsChunk(chunkPos)) return null
-        return scannedChunks[chunkPos]?.getBlock(pos)
+        return chunks[chunkPos]?.getBlock(pos)
     }
 
     fun setBlock(block: ScannedBlock) {
-        val chunkPos = ChunkPos.fromBlockPosition(block.pos)
+        val chunkPos = ChunkPos.fromBlockPos(block.pos)
         if (containsChunk(chunkPos)) {
-            scannedChunks[chunkPos]?.addBlock(block)
+            chunks[chunkPos]?.setBlock(block)
             chunkFilesToUpdate[chunkPos] = true
         } else {
             val chunk = ScannedChunk(chunkPos)
@@ -44,7 +44,7 @@ class ScannedRoadmap {
     }
 
     fun removeBlock(pos: BlockPos): Boolean {
-        val chunkPos = ChunkPos.fromBlockPosition(pos)
+        val chunkPos = ChunkPos.fromBlockPos(pos)
         if (!containsChunk(chunkPos)) return false
         val chunk = getChunk(chunkPos)
         val result = chunk?.removeBlock(pos) ?: false
@@ -58,20 +58,20 @@ class ScannedRoadmap {
     }
 
     fun containsBlock(pos: BlockPos): Boolean {
-        val chunkPos = ChunkPos.fromBlockPosition(pos)
+        val chunkPos = ChunkPos.fromBlockPos(pos)
         if (!containsChunk(chunkPos)) return false
-        return scannedChunks[chunkPos]?.containsBlock(pos) ?: false
+        return chunks[chunkPos]?.containsBlock(pos) ?: false
     }
 
     fun getChunk(pos: ChunkPos): ScannedChunk? {
         return if(containsChunk(pos))
-            scannedChunks[pos]
+            chunks[pos]
         else
             null
     }
 
     fun setChunk(chunk: ScannedChunk) {
-        scannedChunks[chunk.pos] = chunk
+        chunks[chunk.pos] = chunk
         chunkFilesToUpdate[chunk.pos] = true
     }
 
@@ -89,32 +89,33 @@ class ScannedRoadmap {
 
     fun removeChunk(pos: ChunkPos): Boolean {
         if (!containsChunk(pos)) return false
-        scannedChunks.remove(pos)
+        chunks.remove(pos)
         chunkFilesToUpdate.remove(pos)
         chunkFilesToRemove.add(pos)
         return true
     }
 
     fun clearChunks(): Boolean {
-        if (scannedChunks.isEmpty()) return false
-        for (pos in scannedChunks.keys) chunkFilesToRemove.add(pos)
-        scannedChunks.clear()
+        if (chunks.isEmpty()) return false
+        for (pos in chunks.keys) chunkFilesToRemove.add(pos)
+        chunks.clear()
         chunkFilesToUpdate.clear()
         return true
     }
 
     fun containsChunk(pos: ChunkPos): Boolean {
-        return scannedChunks.containsKey(pos)
+        return chunks.containsKey(pos)
     }
 
     fun writeFiles() {
         for (removalPos in chunkFilesToRemove) FileSys.removeFile(removalPos.toFilename())
-        for (updatePos in chunkFilesToUpdate.keys) if (chunkFilesToUpdate[updatePos] ?: false) {
-            val chunk = scannedChunks[updatePos]
+        for (updatePos in chunkFilesToUpdate.keys) if (chunkFilesToUpdate[updatePos] == true) {
+            val chunk = chunks[updatePos]
             FileSys.writeFile(
-                Constants.SCAN_FOLDER_PATH + (chunk?.pos?.toFilename() ?: "scan_null.${Constants.SCAN_FILE_EXTENSION}"),
+                Constants.SCAN_FOLDER_PATH + "${name}/" + (chunk?.pos?.toFilename() ?: "null.${Constants.SCAN_FILE_EXTENSION}"),
                 chunk.toString()
             )
+            chunkFilesToUpdate[updatePos] = false
         }
     }
 

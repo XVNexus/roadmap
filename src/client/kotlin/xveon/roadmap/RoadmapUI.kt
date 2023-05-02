@@ -24,7 +24,7 @@ class RoadmapUI : BaseOwoScreen<FlowLayout>() {
         rootComponent.child(
             Components.button(
                 Text.literal("hi lol")
-            ) { button: ButtonComponent? -> RoadmapClient.logger.error("button click!1!") }
+            ) { button: ButtonComponent? -> RoadmapClient.logger.info("button click!1!") }
         )
     }
 }

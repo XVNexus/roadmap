@@ -11,9 +11,9 @@ data class ScannedBlock(var pos: BlockPos, var clearance: Int, var isRoad: Boole
         fun fromString(value: String): ScannedBlock {
             val substrings = value.split(' ', ',', ';', '.')
             val parsedPos = BlockPos(substrings[0].toInt(), substrings[1].toInt(), substrings[2].toInt())
-            val parsedClearance = substrings[4].toInt()
-            val parsedIsRoad = substrings[5][0] == ScannedBlock.ROAD_TAG
-            val parsedName = substrings[6]
+            val parsedClearance = substrings[3].toInt()
+            val parsedIsRoad = substrings[4][0] == ScannedBlock.ROAD_TAG
+            val parsedName = substrings[5]
             return ScannedBlock(parsedPos, parsedClearance, parsedIsRoad, parsedName)
         }
 

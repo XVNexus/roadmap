@@ -6,29 +6,29 @@ import net.minecraft.util.math.BlockPos
 object BlockStateCache {
     val blockStateMap = mutableMapOf<BlockPos, BlockState>()
 
-    fun getBlockStateAtPos(pos: BlockPos): BlockState? {
-        if (!containsBlockStateAtPos(pos)) return null
+    fun getBlockState(pos: BlockPos): BlockState? {
+        if (!containsBlockState(pos)) return null
         return blockStateMap[pos]
     }
 
-    fun setBlockStateAtPos(pos: BlockPos, block: BlockState) {
+    fun setBlockState(pos: BlockPos, block: BlockState) {
         blockStateMap[pos] = block
     }
 
-    fun addBlockStateAtPos(pos: BlockPos, block: BlockState): Boolean {
-        if (containsBlockStateAtPos(pos)) return false
-        setBlockStateAtPos(pos, block)
+    fun addBlockState(pos: BlockPos, block: BlockState): Boolean {
+        if (containsBlockState(pos)) return false
+        setBlockState(pos, block)
         return true
     }
 
-    fun replaceBlockAtPos(pos: BlockPos, block: BlockState): Boolean {
-        if (!containsBlockStateAtPos(pos)) return false
-        setBlockStateAtPos(pos, block)
+    fun replaceBlock(pos: BlockPos, block: BlockState): Boolean {
+        if (!containsBlockState(pos)) return false
+        setBlockState(pos, block)
         return true
     }
 
-    fun removeBlockAtPos(pos: BlockPos): Boolean {
-        if (!containsBlockStateAtPos(pos)) return false
+    fun removeBlock(pos: BlockPos): Boolean {
+        if (!containsBlockState(pos)) return false
         blockStateMap.remove(pos)
         return true
     }
@@ -39,7 +39,7 @@ object BlockStateCache {
         return true
     }
 
-    fun containsBlockStateAtPos(pos: BlockPos): Boolean {
+    fun containsBlockState(pos: BlockPos): Boolean {
         return blockStateMap.containsKey(pos)
     }
 }

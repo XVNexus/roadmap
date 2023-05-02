@@ -1,9 +1,8 @@
 package xveon.roadmap
 
 object Constants {
-    const val BASE_PATH = "roadmap/"
-    const val CONFIG_FILE_PATH = "config.json"
-    const val SCAN_FOLDER_PATH = "scan/"
+    const val CONFIG_PATH = "config/roadmap.json"
+    const val OUTPUT_PATH = "roadmaps/"
     const val SCAN_FILE_EXTENSION = "txt"
 
     const val CHUNK_SIZE = 16

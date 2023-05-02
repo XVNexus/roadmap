@@ -4,12 +4,12 @@ import java.io.File
 
 object FileSys {
     fun listFiles(path: String): List<File> {
-        val dir = File(Constants.BASE_PATH + path)
+        val dir = File(path)
         return dir.listFiles()?.toList() ?: listOf()
     }
 
     fun readFile(path: String): String {
-        val file = File(Constants.BASE_PATH + path)
+        val file = File( path)
         return readFile(file)
     }
 
@@ -18,13 +18,13 @@ object FileSys {
     }
 
     fun writeFile(path: String, contents: String) {
-        val file = File(Constants.BASE_PATH + path)
+        val file = File( path)
         createFile(file)
         file.writeText(contents)
     }
 
     fun createFile(path: String): Boolean {
-        val file = File(Constants.BASE_PATH + path)
+        val file = File(path)
         return createFile(file)
     }
 
@@ -34,7 +34,7 @@ object FileSys {
     }
 
     fun removeFile(path: String): Boolean {
-        val file = File(Constants.BASE_PATH + path)
+        val file = File(path)
         return removeFile(file)
     }
 
@@ -49,7 +49,7 @@ object FileSys {
     }
 
     fun containsFile(path: String): Boolean {
-        val file = File(Constants.BASE_PATH + path)
+        val file = File(path)
         return containsFile(file)
     }
 

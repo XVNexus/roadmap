@@ -52,12 +52,12 @@ dependencies {
 	// modImplementation "net.fabricmc.fabric-api:fabric-api-deprecated:${project.fabric_version}"
 
 	// oωo Lib
-	modImplementation "io.wispforest:owo-lib:${project.owo_version}"
-	include "io.wispforest:owo-sentinel:${project.owo_version}"
+	// modImplementation "io.wispforest:owo-lib:${project.owo_version}"
+	// include "io.wispforest:owo-sentinel:${project.owo_version}"
 
 	// Xaero's Minimap and World Map
-	modImplementation "curse.maven:xaeros-minimap-263420:${project.xaero_minimap_id}"
-	modImplementation "curse.maven:xaeros-world-map-317780:${project.xaero_world_map_id}"
+	// modImplementation "curse.maven:xaeros-minimap-263420:${project.xaero_minimap_id}"
+	// modImplementation "curse.maven:xaeros-world-map-317780:${project.xaero_world_map_id}"
 }
 
 processResources {

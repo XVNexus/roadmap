@@ -1,6 +1,7 @@
 package xveon.roadmap
 
 import net.minecraft.util.math.BlockPos
+import net.minecraft.world.chunk.Chunk
 
 class ScannedRoadmap(var name: String = "") {
     var chunks = mutableMapOf<ChunkPos, ScannedChunk>()
@@ -63,6 +64,17 @@ class ScannedRoadmap(var name: String = "") {
         return chunks[chunkPos]?.containsBlock(pos) ?: false
     }
 
+    fun getChunksInRadius(pos: ChunkPos, radius: Int): Set<ScannedChunk> {
+        val result = mutableSetOf<ScannedChunk>()
+        for (z in -radius..radius) {
+            for (x in -radius..radius) {
+                val chunk = getChunk(ChunkPos(pos.x + x, pos.z + z))
+                if (chunk != null) result.add(chunk)
+            }
+        }
+        return result
+    }
+
     fun getChunk(pos: ChunkPos): ScannedChunk? {
         return if(containsChunk(pos))
             chunks[pos]
@@ -108,11 +120,14 @@ class ScannedRoadmap(var name: String = "") {
     }
 
     fun writeFiles() {
-        for (removalPos in chunkFilesToRemove) FileSys.removeFile(removalPos.toFilename())
+        for (removalPos in chunkFilesToRemove) {
+            FileSys.removeFile(Constants.OUTPUT_PATH + removalPos.toFilename())
+        }
+        chunkFilesToRemove.clear()
         for (updatePos in chunkFilesToUpdate.keys) if (chunkFilesToUpdate[updatePos] == true) {
             val chunk = chunks[updatePos]
             FileSys.writeFile(
-                Constants.SCAN_FOLDER_PATH + "${name}/" + (chunk?.pos?.toFilename() ?: "null.${Constants.SCAN_FILE_EXTENSION}"),
+                Constants.OUTPUT_PATH + (chunk?.pos?.toFilename() ?: "null.${Constants.SCAN_FILE_EXTENSION}"),
                 chunk.toString()
             )
             chunkFilesToUpdate[updatePos] = false
@@ -122,7 +137,7 @@ class ScannedRoadmap(var name: String = "") {
     companion object {
         fun readFiles(): ScannedRoadmap {
             val result = ScannedRoadmap()
-            for (file in FileSys.listFiles(Constants.SCAN_FOLDER_PATH))
+            for (file in FileSys.listFiles(Constants.OUTPUT_PATH))
                 if (Regex("scan_(-?\\d+)_(-?\\d+)").matches(file.nameWithoutExtension))
                     result.addChunk(ScannedChunk.fromString(FileSys.readFile(file)))
             return result

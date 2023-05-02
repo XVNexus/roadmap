@@ -15,7 +15,7 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
         if (!originBlock.isRoad) return
 
         originBlock.clearance = getClearanceOfBlock(originBlock, Config.scanHeight, player)
-        scannedRoadmap.addBlock(originBlock)
+        scannedRoadmap.setBlock(originBlock)
         tracker.markPosScanned(originBlock.pos)
         tracker.enqueuePendingPositions(getAdjacentPositions(originBlock.pos))
 
@@ -30,13 +30,13 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
             }
             val nextScannedBlock = getFloorBlockAtPos(nextPendingPos, Pair(1, 1), player)
             if (nextScannedBlock == null) {
-                scannedRoadmap.addBlock(ScannedBlock.asVoid(nextPendingPos))
+                scannedRoadmap.setBlock(ScannedBlock.asVoid(nextPendingPos))
                 tracker.markPosScanned(nextPendingPos)
                 continue
             }
 
             nextScannedBlock.clearance = getClearanceOfBlock(nextScannedBlock, Config.scanHeight, player)
-            scannedRoadmap.addBlock(nextScannedBlock)
+            scannedRoadmap.setBlock(nextScannedBlock)
             tracker.markPosScanned(nextScannedBlock.pos)
             if (nextScannedBlock.isRoad)
                 tracker.enqueuePendingPositions(getAdjacentPositions(nextScannedBlock.pos))
@@ -80,6 +80,7 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
             val testPos = BlockPos(pos.x, y, pos.z)
             val testBlock = getBlockStateOrCachedBlockState(testPos, player)
             val blockBelow = getBlockStateOrCachedBlockState(testPos.subtract(BlockPos(0, 1, 0)), player)
+
             if (isBlockSolid(testBlock) and !isBlockSolid(blockBelow))
                 return ScannedBlock.fromRoadBlockFilter(testPos, 0, getBlockName(testBlock))
         }
@@ -91,6 +92,7 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
             val testPos = BlockPos(pos.x, y, pos.z)
             val testBlock = getBlockStateOrCachedBlockState(testPos, player)
             val blockAbove = getBlockStateOrCachedBlockState(testPos.add(BlockPos(0, 1, 0)), player)
+
             if (isBlockSolid(testBlock) and !isBlockSolid(blockAbove))
                 return ScannedBlock.fromRoadBlockFilter(testPos, 0, getBlockName(testBlock))
         }
@@ -98,17 +100,17 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
     }
 
     fun getBlockStateOrCachedBlockState(pos: BlockPos, player: ClientPlayerEntity): BlockState {
-        val result = BlockStateCache.getBlockStateAtPos(pos) ?: player.world.getBlockState(pos)
-        if (!BlockStateCache.containsBlockStateAtPos(pos))
-            BlockStateCache.setBlockStateAtPos(pos, result)
+        val result = BlockStateCache.getBlockState(pos) ?: player.world.getBlockState(pos)
+        if (!BlockStateCache.containsBlockState(pos))
+            BlockStateCache.setBlockState(pos, result)
         return result
     }
 
     fun isBlockSolid(block: BlockState): Boolean {
         val name = getBlockName(block)
-        return if (Config.solidBlocks.contains(name))
+        return if (Config.terrainBlocks.contains(name))
             true
-        else if (Config.transparentBlocks.contains(name))
+        else if (Config.ignoredBlocks.contains(name))
             false
         else
             block.isOpaque

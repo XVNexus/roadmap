@@ -2,7 +2,6 @@ package xveon.roadmap
 
 import net.fabricmc.api.ModInitializer
 import org.slf4j.LoggerFactory
-import xaero.common.minimap.render.MinimapRendererHelper
 
 object Roadmap : ModInitializer {
     private val logger = LoggerFactory.getLogger("roadmap")

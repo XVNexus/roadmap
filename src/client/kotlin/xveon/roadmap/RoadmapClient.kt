@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.ClientStarted
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
-import net.fabricmc.fabric.api.client.networking.v1.ClientLoginConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.networking.v1.PacketSender
 import net.minecraft.client.MinecraftClient
@@ -14,29 +13,32 @@ import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.client.network.ServerAddress
 import net.minecraft.client.option.KeyBinding
 import net.minecraft.client.util.InputUtil
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.text.Text
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
+import kotlin.random.Random
 
 object RoadmapClient : ClientModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
     private lateinit var kbScan: KeyBinding
-    private lateinit var kbReload: KeyBinding
     private lateinit var kbUi: KeyBinding
-    private var map = ScannedRoadmap()
+    private var scannedRoadmap = ScannedRoadmap()
     private var ui = RoadmapUI()
+    private var masterTickCount = 0
+    private var lastChunkPos = ChunkPos(0, 0)
+    private var surroundingChunks = setOf<ScannedChunk>()
 
     override fun onInitializeClient() {
         // This entrypoint is suitable for setting up client-specific logic, such as rendering.
         logger.info("Initializing roadmap client...")
 
-        Config.loadFile()
-        Config.saveFile()
+        Config.reloadFile()
         logger.info("Loaded config")
 
-        if (FileSys.containsFiles(Constants.SCAN_FOLDER_PATH)) {
-            map = ScannedRoadmap.readFiles()
-            logger.info("Loaded ${map.getBlockCount()} previously scanned blocks.")
+        if (FileSys.containsFiles(Constants.OUTPUT_PATH)) {
+            scannedRoadmap = ScannedRoadmap.readFiles()
+            logger.info("Loaded ${scannedRoadmap.getBlockCount()} previously scanned blocks.")
         }
 
         kbScan = KeyBindingHelper.registerKeyBinding(
@@ -48,20 +50,11 @@ object RoadmapClient : ClientModInitializer {
             )
         )
 
-        kbReload = KeyBindingHelper.registerKeyBinding(
-            KeyBinding(
-                "key.roadmap.reload",  // The translation key of the keybinding's name
-                InputUtil.Type.KEYSYM,  // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
-                GLFW.GLFW_KEY_G,  // The keycode of the key
-                "category.roadmap.main" // The translation key of the keybinding's category.
-            )
-        )
-
         kbUi = KeyBindingHelper.registerKeyBinding(
             KeyBinding(
                 "key.roadmap.ui",  // The translation key of the keybinding's name
                 InputUtil.Type.KEYSYM,  // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
-                GLFW.GLFW_KEY_U,  // The keycode of the key
+                GLFW.GLFW_KEY_G,  // The keycode of the key
                 "category.roadmap.main" // The translation key of the keybinding's category.
             )
         )
@@ -75,16 +68,31 @@ object RoadmapClient : ClientModInitializer {
         }
 
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
-            while (kbScan.wasPressed()) handleScanKeypress(client)
+            masterTickCount++
+            if (masterTickCount % 20 == 0) updateSurroundingChunks(client)
+            if (Config.drawParticles) drawRoadParticles(client)
+            while (kbScan.wasPressed()) scanSurroundingRoads(client)
+            while (kbUi.wasPressed()) openUi(client)
         })
+    }
 
-        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
-            while (kbReload.wasPressed()) handleReloadKeypress(client)
-        })
+    fun drawRoadParticles(client: MinecraftClient) {
+        val particleManager = client.particleManager
+        val rand = Random(masterTickCount)
 
-        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
-            while (kbUi.wasPressed()) handleUiKeypress(client)
-        })
+        for (chunk in surroundingChunks) {
+            for (block in chunk.blocks.values) if (block.isRoad) {
+                if (rand.nextInt(40) != 0) continue
+
+                particleManager.addParticle(
+                    ParticleTypes.DRIPPING_OBSIDIAN_TEAR,
+                    block.pos.x.toDouble() + rand.nextDouble(),
+                    block.pos.y.toDouble() + 1,
+                    block.pos.z.toDouble() + rand.nextDouble(),
+                    0.0, 0.0, 0.0
+                )
+            }
+        }
     }
 
     fun handleClientStarted(client: MinecraftClient) {
@@ -95,45 +103,80 @@ object RoadmapClient : ClientModInitializer {
         // TODO: Do something with this
     }
 
-    fun handleScanKeypress(client: MinecraftClient) {
+    fun updateSurroundingChunks(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
-        logger.info("Scanning surrounding blocks...")
-        val scanner = RoadmapScanner(map)
-        val startBlockCount = map.getBlockCount()
-        scanner.scan(player)
-        val endBlockCount = map.getBlockCount()
-        val newBlocks = endBlockCount - startBlockCount
-        if (newBlocks > 0) {
-            map.writeFiles()
-            logger.info("Saved $newBlocks blocks to scan data.")
-            notifyPlayer("Saved $newBlocks blocks to scan data", player)
-        } else {
-            logger.info("No new blocks were saved to scan data.")
-            notifyPlayer("No new blocks were saved to scan data", player)
+
+        val currentChunkPos = ChunkPos.fromBlockPos(player.blockPos)
+        if (currentChunkPos != lastChunkPos) {
+            surroundingChunks = scannedRoadmap.getChunksInRadius(currentChunkPos, Config.particleChunkRadius)
+            lastChunkPos = currentChunkPos
         }
     }
 
-    fun handleReloadKeypress(client: MinecraftClient) {
+    fun scanSurroundingRoads(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
-        map = ScannedRoadmap.readFiles()
-        Config.loadFile()
-        Config.saveFile()
-        logger.info("Reloaded scan data and config.")
+        logger.info("Scanning surrounding blocks...")
+
+        val startBlockCount = scannedRoadmap.getBlockCount()
+        val scanner = RoadmapScanner(scannedRoadmap)
+        scanner.scan(player)
+        scannedRoadmap.writeFiles()
+        val endBlockCount = scannedRoadmap.getBlockCount()
+
+        val newBlocks = endBlockCount - startBlockCount
+        if (newBlocks > 0) {
+            logger.info("Saved $newBlocks blocks to scan data")
+            notifyPlayer("Saved $newBlocks blocks to scan data.", player)
+        } else {
+            logger.info("No new blocks were saved to scan data")
+            notifyPlayer("No new blocks were saved to scan data.", player)
+        }
+    }
+
+    fun clearSurroundingChunks(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+        logger.info("Clearing surrounding chunk data...")
+
+        val startChunkCount = scannedRoadmap.chunks.count()
+        val playerChunkPos = ChunkPos.fromBlockPos(player.blockPos)
+        for (z in playerChunkPos.z - 1..playerChunkPos.z + 1) {
+            for (x in playerChunkPos.x - 1..playerChunkPos.x + 1) {
+                scannedRoadmap.removeChunk(ChunkPos(x, z))
+            }
+        }
+        scannedRoadmap.writeFiles()
+        val endChunkCount = scannedRoadmap.chunks.count()
+
+        val removedChunks = startChunkCount - endChunkCount
+        if (removedChunks > 0) {
+            logger.info("Removed $removedChunks chunks from scan data")
+            notifyPlayer("Removed $removedChunks chunks from scan data.", player)
+        } else {
+            logger.info("No chunks were removed from scan data")
+            notifyPlayer("No chunks were removed from scan data.", player)
+        }
+    }
+
+    fun reloadFiles(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+        scannedRoadmap = ScannedRoadmap.readFiles()
+        Config.reloadFile()
+
+        logger.info("Reloaded scan data and config")
         notifyPlayer("Reloaded scan data and config.", player)
     }
 
-    fun handleUiKeypress(client: MinecraftClient) {
+    fun undoLastScan(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
-        // ui.init(client, 100, 100)
-        if (client.server != null) {
-            val sa = ServerAddress.parse(client.server!!.serverIp)
-            messagePlayer("Address: ${sa.address} | Port: ${sa.port}", player)
-        }
-        else {
-            messagePlayer("Server not found, cannot get address and port.", player)
-        }
-        logger.warn("UI is not yet implemented.")
-        notifyPlayer("UI is not yet implemented.", player)
+        logger.warn("Undo feature not implemented!")
+        notifyPlayer("The undo feature will be added in a future version.", player)
+    }
+
+    fun openUi(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+
+        ui.init(client, 320, 240)
+        client.setScreenAndRender(ui)
     }
 
     fun messagePlayer(text: String, player: ClientPlayerEntity) {
@@ -142,5 +185,11 @@ object RoadmapClient : ClientModInitializer {
 
     fun notifyPlayer(text: String, player: ClientPlayerEntity) {
         player.sendMessage(Text.literal("Roadmap: $text"), true)
+    }
+
+    fun getServerIp(client: MinecraftClient): String {
+        val player: ClientPlayerEntity = client.player ?: return ""
+        val server = client.server ?: return ""
+        return ServerAddress.parse(client.server!!.serverIp).address
     }
 }

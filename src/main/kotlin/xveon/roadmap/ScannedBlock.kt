@@ -18,7 +18,7 @@ data class ScannedBlock(var pos: BlockPos, var clearance: Int, var isRoad: Boole
         }
 
         fun fromRoadBlockFilter(pos: BlockPos, clearance: Int, name: String): ScannedBlock {
-            return ScannedBlock(pos, clearance, Config.roadBlocks.contains(name), name)
+            return ScannedBlock(pos, clearance, (Config["road_blocks"] as MutableList<String>).contains(name), name)
         }
 
         fun asRoad(pos: BlockPos, clearance: Int, name: String): ScannedBlock {

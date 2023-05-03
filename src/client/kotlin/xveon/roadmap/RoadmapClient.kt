@@ -24,7 +24,7 @@ object RoadmapClient : ClientModInitializer {
     private lateinit var kbScan: KeyBinding
     private lateinit var kbUi: KeyBinding
     private var scannedRoadmap = ScannedRoadmap()
-    private var ui = RoadmapUI()
+    private var ui = RoadmapUi()
     private var masterTickCount = 0
     private var lastChunkPos = ChunkPos(0, 0)
     private var surroundingChunks = setOf<ScannedChunk>()
@@ -70,7 +70,7 @@ object RoadmapClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
             masterTickCount++
             if (masterTickCount % 20 == 0) updateSurroundingChunks(client)
-            if (Config.drawParticles) drawRoadParticles(client)
+            if (Config["draw_particles"] as Boolean) drawRoadParticles(client)
             while (kbScan.wasPressed()) scanSurroundingRoads(client)
             while (kbUi.wasPressed()) openUi(client)
         })
@@ -108,7 +108,7 @@ object RoadmapClient : ClientModInitializer {
 
         val currentChunkPos = ChunkPos.fromBlockPos(player.blockPos)
         if (currentChunkPos != lastChunkPos) {
-            surroundingChunks = scannedRoadmap.getChunksInRadius(currentChunkPos, Config.particleChunkRadius)
+            surroundingChunks = scannedRoadmap.getChunksInRadius(currentChunkPos, Config["particle_chunk_radius"] as Int)
             lastChunkPos = currentChunkPos
         }
     }
@@ -159,6 +159,7 @@ object RoadmapClient : ClientModInitializer {
 
     fun reloadFiles(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
+        BlockStateCache.clearBlockStates()
         scannedRoadmap = ScannedRoadmap.readFiles()
         Config.reloadFile()
 
@@ -175,16 +176,17 @@ object RoadmapClient : ClientModInitializer {
     fun openUi(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
-        ui.init(client, 320, 240)
         client.setScreenAndRender(ui)
     }
 
-    fun messagePlayer(text: String, player: ClientPlayerEntity) {
-        player.sendMessage(Text.literal("Roadmap: $text"), false)
+    fun messagePlayer(text: String, providedPlayer: ClientPlayerEntity? = null) {
+        val player = providedPlayer ?: MinecraftClient.getInstance().player
+        player?.sendMessage(Text.literal("Roadmap: $text"), false) ?: logger.error("Could not find player to send notification \"${text}\" to!")
     }
 
-    fun notifyPlayer(text: String, player: ClientPlayerEntity) {
-        player.sendMessage(Text.literal("Roadmap: $text"), true)
+    fun notifyPlayer(text: String, providedPlayer: ClientPlayerEntity? = null) {
+        val player = providedPlayer ?: MinecraftClient.getInstance().player
+        player?.sendMessage(Text.literal("Roadmap: $text"), true) ?: logger.error("Could not find player to send notification \"${text}\" to!")
     }
 
     fun getServerIp(client: MinecraftClient): String {

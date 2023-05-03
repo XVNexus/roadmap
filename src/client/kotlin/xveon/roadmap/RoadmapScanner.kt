@@ -1,9 +1,7 @@
 package xveon.roadmap
 
-import net.minecraft.block.Block
 import net.minecraft.block.BlockState
 import net.minecraft.client.network.ClientPlayerEntity
-import net.minecraft.registry.Registries
 import net.minecraft.util.math.BlockPos
 
 class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
@@ -25,17 +23,21 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
 
             val nextPendingPos = tracker.dequeuePendingPos()
             if (!isPosWithinRangeOfPlayer(nextPendingPos, Config["scan_radius"] as Double, player)) {
+                if (!scannedRoadmap.containsBlocks(nextPendingPos, 3))
+                    scannedRoadmap.setBlock(ScannedBlock.void(nextPendingPos))
                 tracker.markPosScanned(nextPendingPos)
                 continue
             }
             val nextScannedBlock = getFloorBlockAtPos(nextPendingPos, Pair(1, 1), player)
             if (nextScannedBlock == null) {
-                scannedRoadmap.setBlock(ScannedBlock.asVoid(nextPendingPos))
+                scannedRoadmap.removeVoid(nextPendingPos, 3)
+                scannedRoadmap.setBlock(ScannedBlock.unknown(nextPendingPos))
                 tracker.markPosScanned(nextPendingPos)
                 continue
             }
 
             nextScannedBlock.clearance = getClearanceOfBlock(nextScannedBlock, Config["scan_height"] as Int, player)
+            scannedRoadmap.removeVoid(nextScannedBlock.pos, 3)
             scannedRoadmap.setBlock(nextScannedBlock)
             tracker.markPosScanned(nextScannedBlock.pos)
             if (nextScannedBlock.isRoad)
@@ -76,7 +78,7 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
     }
 
     fun getCeilingBlockAtPos(pos: BlockPos, heightMinMax: Pair<Int, Int>, player: ClientPlayerEntity): ScannedBlock? {
-        for (y in pos.y - heightMinMax.first..pos.y + heightMinMax.second) {
+        for (y in pos.y - heightMinMax.first..pos.y + heightMinMax.second + 1) {
             val testPos = BlockPos(pos.x, y, pos.z)
             val testBlock = getBlockStateOrCachedBlockState(testPos, player)
             val blockBelow = getBlockStateOrCachedBlockState(testPos.subtract(BlockPos(0, 1, 0)), player)
@@ -88,7 +90,7 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
     }
 
     fun getFloorBlockAtPos(pos: BlockPos, heightMinMax: Pair<Int, Int>, player: ClientPlayerEntity): ScannedBlock? {
-        for (y in pos.y + heightMinMax.second downTo pos.y - heightMinMax.first) {
+        for (y in pos.y + heightMinMax.second downTo pos.y - heightMinMax.first - 1) {
             val testPos = BlockPos(pos.x, y, pos.z)
             val testBlock = getBlockStateOrCachedBlockState(testPos, player)
             val blockAbove = getBlockStateOrCachedBlockState(testPos.add(BlockPos(0, 1, 0)), player)

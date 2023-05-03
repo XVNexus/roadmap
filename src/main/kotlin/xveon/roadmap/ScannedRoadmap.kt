@@ -1,7 +1,6 @@
 package xveon.roadmap
 
 import net.minecraft.util.math.BlockPos
-import net.minecraft.world.chunk.Chunk
 
 class ScannedRoadmap(var name: String = "") {
     var chunks = mutableMapOf<ChunkPos, ScannedChunk>()
@@ -11,6 +10,13 @@ class ScannedRoadmap(var name: String = "") {
     fun getBlockCount(): Int {
         var result = 0
         for (chunk in chunks.values) result += chunk.blocks.count()
+        return result
+    }
+
+    fun getAllBlocks(): Map<BlockPos, ScannedBlock> {
+        val result = mutableMapOf<BlockPos, ScannedBlock>()
+        for (chunk in chunks.values)
+            result.putAll(chunk.blocks)
         return result
     }
 
@@ -54,8 +60,39 @@ class ScannedRoadmap(var name: String = "") {
         return result
     }
 
+    fun removeVoid(pos: BlockPos, rangeY: Int): Boolean {
+        var result = false
+        for (y in -rangeY..rangeY + 1) {
+            val removalPos = pos.add(0, y, 0)
+            if (containsBlock(removalPos, Constants.VOID_NAME)) {
+                removeBlock(removalPos)
+                result = true
+            }
+        }
+        return result
+    }
+
     fun clearBlocks(): Boolean {
         return clearChunks()
+    }
+
+    fun containsBlocks(pos: BlockPos, rangeY: Int, name: String): Boolean {
+        for (y in -rangeY..rangeY + 1)
+            if (containsBlock(pos.add(0, y, 0), name))
+                return true
+        return false
+    }
+
+    fun containsBlocks(pos: BlockPos, rangeY: Int): Boolean {
+        for (y in -rangeY..rangeY + 1)
+            if (containsBlock(pos.add(0, y, 0)))
+                return true
+        return false
+    }
+
+    fun containsBlock(pos: BlockPos, name: String): Boolean {
+        val nameAtPos = getBlock(pos)?.name ?: return false
+        return name == nameAtPos
     }
 
     fun containsBlock(pos: BlockPos): Boolean {
@@ -66,8 +103,8 @@ class ScannedRoadmap(var name: String = "") {
 
     fun getChunksInRadius(pos: ChunkPos, radius: Int): Set<ScannedChunk> {
         val result = mutableSetOf<ScannedChunk>()
-        for (z in -radius..radius) {
-            for (x in -radius..radius) {
+        for (z in -radius..radius + 1) {
+            for (x in -radius..radius + 1) {
                 val chunk = getChunk(ChunkPos(pos.x + x, pos.z + z))
                 if (chunk != null) result.add(chunk)
             }

@@ -9,15 +9,21 @@ object RoadmapController {
         RoadmapClient.scanSurroundingRoads(MinecraftClient.getInstance())
     }
 
+    fun handleUndoScanPress(button: ButtonWidget?) {
+        RoadmapClient.logger.info("GUI: Undo Scan button pressed")
+        RoadmapClient.undoLastScan(MinecraftClient.getInstance())
+    }
+
     fun handleClearAreaPress(button: ButtonWidget?) {
         RoadmapClient.logger.info("GUI: Clear Area button pressed")
         RoadmapClient.clearSurroundingChunks(MinecraftClient.getInstance())
     }
 
-    fun handleUndoScanPress(button: ButtonWidget?) {
-        RoadmapClient.logger.info("GUI: Undo Scan button pressed")
-        RoadmapClient.undoLastScan(MinecraftClient.getInstance())
+    fun handleFindNewPress(button: ButtonWidget?) {
+        RoadmapClient.logger.info("GUI: Find New button pressed")
+        RoadmapClient.findUnscannedRoads(MinecraftClient.getInstance())
     }
+
     fun handleReloadPress(button: ButtonWidget?) {
         RoadmapClient.logger.info("GUI: Reload button pressed")
         RoadmapClient.reloadFiles(MinecraftClient.getInstance())
@@ -32,7 +38,7 @@ object RoadmapController {
         }
     }
 
-    fun HandleConfigToggle(label: String, configId: String) {
+    fun handleConfigToggle(label: String, configId: String) {
         Config[configId] = !(Config[configId] as Boolean)
         RoadmapClient.logger.info("UI: Changed option '$label' to ${Config[configId]}")
         RoadmapClient.notifyPlayer("Changed option '$label' to ${Config[configId]}.")

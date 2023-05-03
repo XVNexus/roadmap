@@ -3,7 +3,6 @@ package xveon.roadmap
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
 import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.screen.DialogScreen.ChoiceButton
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.gui.tooltip.Tooltip
 import net.minecraft.client.gui.widget.*
@@ -30,26 +29,32 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         resetLayoutControlVars()
 
         putHeader("Roadmap Menu")
-        putButton(maxWidth, "Scan", "Scan the surrounding area for road blocks")
+        putButton(maxWidth, tallHeight, "Scan", "Scan the surrounding area for road blocks")
         { button: ButtonWidget? -> RoadmapController.handleScanPress(button) }
-        putButton(70, "Clear Area", "Clear the surrounding chunks of road data")
+        putButton(70, tallHeight, "Clear Area", "Clear the surrounding chunks of road data")
         { button: ButtonWidget? -> RoadmapController.handleClearAreaPress(button) }
-        putButton(maxWidth - 140 - spacing * 2, "Undo Scan", "Undo the last scan")
+        putButton(maxWidth - 140 - spacing * 2, tallHeight, "Undo Scan", "Undo the last scan")
         { button: ButtonWidget? -> RoadmapController.handleUndoScanPress(button) }
-        putButton(70, "Reload", "Load the config and scan data from saved files and clear the cache")
-        { button: ButtonWidget? -> RoadmapController.handleReloadPress(button) }
+        putButton(70, tallHeight, "Find New", "Locate road sections which have been partially scanned")
+        { button: ButtonWidget? -> RoadmapController.handleFindNewPress(button) }
 
         putSpacer(shortHeight)
 
         putHeader("Config Options")
-        putConfigField("Draw Particles", "Display particles on road surfaces", "draw_particles")
-        putConfigField("Particle Chunk Radius", "Maximum distance that road surface particles should be drawn", "particle_chunk_radius")
-        putConfigField("Scan Radius", "How far away from the player the scanner can record blocks", "scan_radius")
-        putConfigField("Scan Height", "How many blocks high to scan when searching for the ceiling", "scan_height")
-        putConfigField("Scan Everything", "Scan all blocks in the player radius instead of just scanning near roads", "scan_everything")
-        putConfigField("Road Blocks", "Which blocks are recorded as roads", "road_blocks")
-        putConfigField("Terrain Blocks", "Which blocks are recorded as terrain (scanner considers all solid blocks not mentioned here as terrain)", "terrain_blocks")
-        putConfigField("Ignored Blocks", "Which blocks are ignored by the scanner (scanner ignores all transparent blocks not mentioned here)", "ignored_blocks")
+        putConfigField(maxWidth, mediumHeight, "Draw Particles", "Display particles on road surfaces", "draw_particles")
+        putConfigField(maxWidth, mediumHeight, "Particle Chunk Radius", "Maximum distance that road surface particles should be drawn", "particle_chunk_radius")
+        putConfigField(maxWidth, mediumHeight, "Scan Radius", "How far away from the player the scanner can record blocks", "scan_radius")
+        putConfigField(maxWidth, mediumHeight, "Scan Height", "How many blocks high to scan when searching for the ceiling", "scan_height")
+        putConfigField(maxWidth, mediumHeight, "Scan Everything", "Scan all blocks in the player radius instead of just scanning near roads", "scan_everything")
+        putConfigField(maxWidth, mediumHeight, "Road Blocks", "Which blocks are recorded as roads", "road_blocks")
+        putConfigField(maxWidth, mediumHeight, "Terrain Blocks", "Which blocks are recorded as terrain (scanner considers all solid blocks not mentioned here as terrain)", "terrain_blocks")
+        putConfigField(maxWidth, mediumHeight, "Ignored Blocks", "Which blocks are ignored by the scanner (scanner ignores all transparent blocks not mentioned here)", "ignored_blocks")
+
+        putSpacer(shortHeight)
+
+        putHeader("Other Controls")
+        putButton(maxWidth, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
+        { button: ButtonWidget? -> RoadmapController.handleReloadPress(button) }
     }
 
     override fun render(matrices: MatrixStack?, mouseX: Int, mouseY: Int, delta: Float) {
@@ -92,22 +97,22 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         movePointer(maxWidth, shortHeight)
     }
 
-    fun putButton(width: Int, label: String, tooltip: String, action: PressAction) {
+    fun putButton(width: Int, height: Int, label: String, tooltip: String, action: PressAction) {
         addDrawableChild(ButtonWidget.builder(
             Text.literal(label), action
         )
-            .dimensions(pointerX, pointerY, width, tallHeight)
+            .dimensions(pointerX, pointerY, width, height)
             .tooltip(Tooltip.of(Text.literal(tooltip)))
             .build())
 
-        movePointer(width, tallHeight)
+        movePointer(width, height)
     }
 
-    fun putConfigField(label: String, tooltip: String, configId: String) {
+    fun putConfigField(width: Int, height: Int, label: String, tooltip: String, configId: String) {
         val labelWidth = 120
 
         val text = TextWidget(
-            pointerX, pointerY, labelWidth, mediumHeight,
+            pointerX, pointerY, labelWidth, height,
             Text.literal("$label:"),
             MinecraftClient.getInstance().textRenderer
         )
@@ -121,11 +126,11 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
                     Text.literal(Config.getOptionString(configId))
                 ) { button: ButtonWidget? ->
                     run {
-                        RoadmapController.HandleConfigToggle(label, configId)
+                        RoadmapController.handleConfigToggle(label, configId)
                         button?.message = Text.literal(Config.getOptionString(configId))
                     }
                 }
-                    .dimensions(pointerX + labelWidth + spacing, pointerY, maxWidth - labelWidth - spacing, mediumHeight)
+                    .dimensions(pointerX + labelWidth + spacing, pointerY, maxWidth - labelWidth - spacing, height)
                     .tooltip(Tooltip.of(Text.literal(tooltip)))
                     .build())
 
@@ -134,7 +139,7 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
 
                 val field = TextFieldWidget(
                     MinecraftClient.getInstance().textRenderer,
-                    pointerX + labelWidth + spacing + 1, pointerY + 1, maxWidth - labelWidth - spacing - 2, mediumHeight - 2,
+                    pointerX + labelWidth + spacing + 1, pointerY + 1, maxWidth - labelWidth - spacing - 2, height - 2,
                     Text.literal(label),
                 )
                 field.text = Config.getOptionString(configId)
@@ -146,6 +151,6 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
             }
         }
 
-        movePointer(maxWidth, mediumHeight)
+        movePointer(maxWidth, height)
     }
 }

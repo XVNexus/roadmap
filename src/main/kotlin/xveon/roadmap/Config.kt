@@ -3,7 +3,6 @@ package xveon.roadmap
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
-import net.minecraft.particle.ParticleTypes
 import java.lang.Exception
 
 object Config {

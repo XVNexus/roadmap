@@ -12,11 +12,11 @@ import net.minecraft.client.network.ClientPlayNetworkHandler
 import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.client.network.ServerAddress
 import net.minecraft.client.option.KeyBinding
-import net.minecraft.client.particle.Particle
 import net.minecraft.client.util.InputUtil
-import net.minecraft.particle.ParticleTypes
+import net.minecraft.particle.DustParticleEffect
 import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
+import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
 import kotlin.math.sqrt
@@ -85,19 +85,33 @@ object RoadmapClient : ClientModInitializer {
         val rand = Random(masterTickCount)
 
         for (chunk in surroundingChunks) {
-            for (block in chunk.blocks.values) if (block.isRoad) {
+            for (block in chunk.blocks.values) {
+                if (block.isRoad) {
 
-                val dist = sqrt(block.pos.getSquaredDistance(player.pos))
-                if (rand.nextInt(dist.toInt().coerceAtLeast(1).coerceAtMost(40)) != 0) continue
+                    val distFromPlayer = sqrt(block.pos.getSquaredDistance(player.pos))
+                    if (rand.nextInt(distFromPlayer.toInt().coerceIn(1, 40)) != 0) continue
 
-                particleManager.addParticle(
-                    ParticleTypes.REVERSE_PORTAL,
-                    block.pos.x.toDouble() + rand.nextDouble(),
-                    block.pos.y.toDouble() + 1,
-                    block.pos.z.toDouble() + rand.nextDouble(),
-                    0.0, rand.nextDouble(0.02), 0.0
-                )
+                    particleManager.addParticle(
+                        DustParticleEffect(Vector3f(0.0F, 1.0F, 0.0F), 1.0F),
+                        block.pos.x.toDouble() + rand.nextDouble(),
+                        block.pos.y.toDouble() + 1,
+                        block.pos.z.toDouble() + rand.nextDouble(),
+                        0.0, 0.0, 0.0
+                    )
 
+                } else if (block.isVoid()) {
+
+                    if (rand.nextInt(10) != 0) continue
+
+                    particleManager.addParticle(
+                        DustParticleEffect(Vector3f(1.0F, 0.0F, 1.0F), 5.0F),
+                        block.pos.x.toDouble() + rand.nextDouble(),
+                        block.pos.y.toDouble() + rand.nextDouble(1.0, 2.0),
+                        block.pos.z.toDouble() + rand.nextDouble(),
+                        0.0, 0.0, 0.0
+                    )
+
+                }
             }
         }
     }
@@ -147,12 +161,8 @@ object RoadmapClient : ClientModInitializer {
         logger.info("Clearing surrounding chunk data...")
 
         val startChunkCount = scannedRoadmap.chunks.count()
-        val playerChunkPos = ChunkPos.fromBlockPos(player.blockPos)
-        for (z in playerChunkPos.z - 1..playerChunkPos.z + 1) {
-            for (x in playerChunkPos.x - 1..playerChunkPos.x + 1) {
-                scannedRoadmap.removeChunk(ChunkPos(x, z))
-            }
-        }
+        for (chunk in scannedRoadmap.getChunksInRadius(ChunkPos.fromBlockPos(player.blockPos), 1))
+            scannedRoadmap.removeChunk(chunk.pos)
         scannedRoadmap.writeFiles()
         val endChunkCount = scannedRoadmap.chunks.count()
 
@@ -166,6 +176,22 @@ object RoadmapClient : ClientModInitializer {
         }
 
         updateSurroundingChunks(client, true)
+    }
+
+    fun findUnscannedRoads(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+
+        val posGroups = PosGroupCollection(10)
+        for (block in scannedRoadmap.getAllBlocks().values) if (block.isVoid())
+            posGroups.addPos(block.pos)
+
+        var result = ""
+        for (group in posGroups.getGroups())
+            result += ", (${group.center.x}, ${group.center.y}, ${group.center.z})"
+        if (result.isNotEmpty())
+            messagePlayer("Positions of all unscanned road tails: ${result.substring(2)}.", player)
+        else
+            messagePlayer("Could not find any unscanned road tails.", player)
     }
 
     fun reloadFiles(client: MinecraftClient) {

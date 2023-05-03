@@ -24,16 +24,15 @@ object Util {
     }
 
     fun compressBlockName(name: String): String {
-        return if (name.startsWith("minecraft:"))
-            name.substring(10)
-        else
-            name
+        val result = if (name.startsWith("minecraft:")) name.substring(10)
+            else name
+        return result.replace('_', ' ')
     }
 
     fun expandBlockName(name: String): String {
-        return if (!name.contains(':'))
-            "minecraft:$name"
-        else
-            name
+        val result =
+            if (!name.contains(':') and (name != Constants.UNKNOWN_NAME) and (name != Constants.VOID_NAME)) "minecraft:$name"
+            else name
+        return result.replace(' ', '_')
     }
 }

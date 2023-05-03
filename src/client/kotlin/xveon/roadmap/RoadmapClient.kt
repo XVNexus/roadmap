@@ -12,11 +12,14 @@ import net.minecraft.client.network.ClientPlayNetworkHandler
 import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.client.network.ServerAddress
 import net.minecraft.client.option.KeyBinding
+import net.minecraft.client.particle.Particle
 import net.minecraft.client.util.InputUtil
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.text.Text
+import net.minecraft.util.math.BlockPos
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 object RoadmapClient : ClientModInitializer {
@@ -24,7 +27,7 @@ object RoadmapClient : ClientModInitializer {
     private lateinit var kbScan: KeyBinding
     private lateinit var kbUi: KeyBinding
     private var scannedRoadmap = ScannedRoadmap()
-    private var ui = RoadmapUi()
+    private var ui = RoadmapGui()
     private var masterTickCount = 0
     private var lastChunkPos = ChunkPos(0, 0)
     private var surroundingChunks = setOf<ScannedChunk>()
@@ -77,20 +80,24 @@ object RoadmapClient : ClientModInitializer {
     }
 
     fun drawRoadParticles(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
         val particleManager = client.particleManager
         val rand = Random(masterTickCount)
 
         for (chunk in surroundingChunks) {
             for (block in chunk.blocks.values) if (block.isRoad) {
-                if (rand.nextInt(40) != 0) continue
+
+                val dist = sqrt(block.pos.getSquaredDistance(player.pos))
+                if (rand.nextInt(dist.toInt().coerceAtLeast(1).coerceAtMost(40)) != 0) continue
 
                 particleManager.addParticle(
-                    ParticleTypes.DRIPPING_OBSIDIAN_TEAR,
+                    ParticleTypes.REVERSE_PORTAL,
                     block.pos.x.toDouble() + rand.nextDouble(),
                     block.pos.y.toDouble() + 1,
                     block.pos.z.toDouble() + rand.nextDouble(),
-                    0.0, 0.0, 0.0
+                    0.0, rand.nextDouble(0.02), 0.0
                 )
+
             }
         }
     }
@@ -103,11 +110,11 @@ object RoadmapClient : ClientModInitializer {
         // TODO: Do something with this
     }
 
-    fun updateSurroundingChunks(client: MinecraftClient) {
+    fun updateSurroundingChunks(client: MinecraftClient, force: Boolean = false) {
         val player: ClientPlayerEntity = client.player ?: return
 
         val currentChunkPos = ChunkPos.fromBlockPos(player.blockPos)
-        if (currentChunkPos != lastChunkPos) {
+        if ((currentChunkPos != lastChunkPos) or force) {
             surroundingChunks = scannedRoadmap.getChunksInRadius(currentChunkPos, Config["particle_chunk_radius"] as Int)
             lastChunkPos = currentChunkPos
         }
@@ -131,6 +138,8 @@ object RoadmapClient : ClientModInitializer {
             logger.info("No new blocks were saved to scan data")
             notifyPlayer("No new blocks were saved to scan data.", player)
         }
+
+        updateSurroundingChunks(client, true)
     }
 
     fun clearSurroundingChunks(client: MinecraftClient) {
@@ -155,6 +164,8 @@ object RoadmapClient : ClientModInitializer {
             logger.info("No chunks were removed from scan data")
             notifyPlayer("No chunks were removed from scan data.", player)
         }
+
+        updateSurroundingChunks(client, true)
     }
 
     fun reloadFiles(client: MinecraftClient) {
@@ -165,12 +176,16 @@ object RoadmapClient : ClientModInitializer {
 
         logger.info("Reloaded scan data and config")
         notifyPlayer("Reloaded scan data and config.", player)
+
+        updateSurroundingChunks(client, true)
     }
 
     fun undoLastScan(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
         logger.warn("Undo feature not implemented!")
         notifyPlayer("The undo feature will be added in a future version.", player)
+
+        updateSurroundingChunks(client, true)
     }
 
     fun openUi(client: MinecraftClient) {

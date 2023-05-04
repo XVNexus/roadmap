@@ -3,9 +3,57 @@ package xveon.roadmap
 import net.minecraft.util.math.BlockPos
 
 class ScannedRoadmap(var name: String = "") {
+    var markers = mutableListOf<RoadmapMarker>()
     var chunks = mutableMapOf<ChunkPos, ScannedChunk>()
-    var chunkFilesToUpdate = mutableMapOf<ChunkPos, Boolean>()
-    var chunkFilesToRemove = mutableSetOf<ChunkPos>()
+
+    private var chunkFilesToUpdate = mutableMapOf<ChunkPos, Boolean>()
+    private var chunkFilesToRemove = mutableSetOf<ChunkPos>()
+
+    fun getMarkers(type: RoadmapMarkerType): MutableList<RoadmapMarker> {
+        val result = mutableListOf<RoadmapMarker>()
+        for (marker in markers)
+            if (marker.type == type)
+                result.add(marker)
+        return result
+    }
+
+    fun addMarker(marker: RoadmapMarker) {
+        addMarker(marker.pos, marker.type)
+    }
+
+    fun addMarker(pos: BlockPos, type: RoadmapMarkerType) {
+        markers.add(RoadmapMarker(pos, type))
+    }
+
+    fun removeMarker(marker: RoadmapMarker) {
+        removeMarker(marker.pos, marker.type)
+    }
+
+    fun removeMarker(pos: BlockPos, type: RoadmapMarkerType) {
+        val markersToRemove = mutableListOf<RoadmapMarker>()
+        for (marker in markers)
+            if ((marker.type == type) and marker.testPos(pos))
+                markersToRemove.add(marker)
+        for (marker in markersToRemove)
+            markers.remove(marker)
+    }
+
+    fun clearMarkers(): Boolean {
+        if (markers.isEmpty()) return false
+        markers.clear()
+        return true
+    }
+
+    fun testMarker(marker: RoadmapMarker): Boolean {
+        return testMarker(marker.pos, marker.type)
+    }
+
+    fun testMarker(pos: BlockPos, type: RoadmapMarkerType): Boolean {
+        for (marker in markers)
+            if ((marker.type == type) and marker.testPos(pos))
+                return true
+        return false
+    }
 
     fun getBlockCount(): Int {
         var result = 0
@@ -60,30 +108,18 @@ class ScannedRoadmap(var name: String = "") {
         return result
     }
 
-    fun removeVoid(pos: BlockPos, rangeY: Int): Boolean {
-        var result = false
-        for (y in -rangeY..rangeY + 1) {
-            val removalPos = pos.add(0, y, 0)
-            if (containsBlock(removalPos, Constants.VOID_NAME)) {
-                removeBlock(removalPos)
-                result = true
-            }
-        }
-        return result
-    }
-
     fun clearBlocks(): Boolean {
         return clearChunks()
     }
 
-    fun containsBlocks(pos: BlockPos, rangeY: Int, name: String): Boolean {
+    fun containsBlock(pos: BlockPos, rangeY: Int, name: String): Boolean {
         for (y in -rangeY..rangeY + 1)
             if (containsBlock(pos.add(0, y, 0), name))
                 return true
         return false
     }
 
-    fun containsBlocks(pos: BlockPos, rangeY: Int): Boolean {
+    fun containsBlock(pos: BlockPos, rangeY: Int): Boolean {
         for (y in -rangeY..rangeY + 1)
             if (containsBlock(pos.add(0, y, 0)))
                 return true
@@ -92,7 +128,7 @@ class ScannedRoadmap(var name: String = "") {
 
     fun containsBlock(pos: BlockPos, name: String): Boolean {
         val nameAtPos = getBlock(pos)?.name ?: return false
-        return name == nameAtPos
+        return nameAtPos == name
     }
 
     fun containsBlock(pos: BlockPos): Boolean {
@@ -157,26 +193,47 @@ class ScannedRoadmap(var name: String = "") {
     }
 
     fun writeFiles() {
+        // Save chunk files
         for (removalPos in chunkFilesToRemove) {
-            FileSys.removeFile(Constants.OUTPUT_PATH + removalPos.toFilename())
+            FileSys.removeFile(Constants.OUTPUT_PATH + Util.genChunkFilename(removalPos))
         }
         chunkFilesToRemove.clear()
         for (updatePos in chunkFilesToUpdate.keys) if (chunkFilesToUpdate[updatePos] == true) {
             val chunk = chunks[updatePos]
             FileSys.writeFile(
-                Constants.OUTPUT_PATH + (chunk?.pos?.toFilename() ?: "null.${Constants.SCAN_FILE_EXTENSION}"),
+                Constants.OUTPUT_PATH + Util.genChunkFilename(chunk?.pos ?: ChunkPos(0, 0)),
                 chunk.toString()
             )
             chunkFilesToUpdate[updatePos] = false
         }
+
+        // Save marker file
+        var markerString = ""
+        for (marker in markers)
+            markerString += "\n$marker"
+        if (markerString.isNotEmpty())
+            FileSys.writeFile(
+                Constants.OUTPUT_PATH + Util.genMarkersFilename(),
+                markerString.substring(1)
+            )
     }
 
     companion object {
         fun readFiles(): ScannedRoadmap {
             val result = ScannedRoadmap()
+
+            // Load chunk files
             for (file in FileSys.listFiles(Constants.OUTPUT_PATH))
-                if (Regex("scan_(-?\\d+)_(-?\\d+)").matches(file.nameWithoutExtension))
+                if (file.nameWithoutExtension.matches(Util.chunkFilenameRegex))
                     result.addChunk(ScannedChunk.fromString(FileSys.readFile(file)))
+
+            // Load marker file
+            if (FileSys.containsFile(Constants.OUTPUT_PATH + Util.genMarkersFilename())) {
+                val markerString = FileSys.readFile(Util.genMarkersFilename())
+                for (line in markerString.split('\n'))
+                    result.addMarker(RoadmapMarker.fromString(line))
+            }
+
             return result
         }
     }

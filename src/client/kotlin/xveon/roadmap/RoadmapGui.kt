@@ -12,18 +12,24 @@ import net.minecraft.text.Text
 
 @Environment(EnvType.CLIENT)
 class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Manager")) {
+    private var sizeX = 360
+    private var sizeY = 360
+    private var centerX = 0
+    private var centerY = 0
     private val spacing = 4
+
+    private val shortWidth = 80
+    private val mediumWidth = 120
+    private val longWidth = 160
+    private var maxWidth = sizeX - spacing * 2
+
     private val shortHeight = 12
     private val mediumHeight = 16
     private val tallHeight = 20
-    private var sizeX = 360
-    private var sizeY = 320
-    private var centerX = 0
-    private var centerY = 0
+    private var maxHeight = sizeY - spacing * 2
+
     private var pointerX = 0
     private var pointerY = 0
-    private var maxWidth = sizeX - spacing * 2
-    private var maxHeight = sizeY - spacing * 2
 
     override fun init() {
         resetLayoutControlVars()
@@ -31,18 +37,19 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         putHeader("Roadmap Menu")
         putButton(maxWidth, tallHeight, "Scan", "Scan the surrounding area for road blocks")
         { button: ButtonWidget? -> RoadmapController.handleScanPress(button) }
-        putButton(70, tallHeight, "Clear Area", "Clear the surrounding chunks of road data")
+        putButton(shortWidth, tallHeight, "Clear Area", "Clear the surrounding chunks of road data")
         { button: ButtonWidget? -> RoadmapController.handleClearAreaPress(button) }
-        putButton(maxWidth - 140 - spacing * 2, tallHeight, "Undo Scan", "Undo the last scan")
+        putButton(maxWidth - shortWidth * 2 - spacing * 2, tallHeight, "Undo Scan", "Undo the last scan")
         { button: ButtonWidget? -> RoadmapController.handleUndoScanPress(button) }
-        putButton(70, tallHeight, "Find New", "Locate road sections which have been partially scanned")
-        { button: ButtonWidget? -> RoadmapController.handleFindNewPress(button) }
+        putButton(shortWidth, tallHeight, "Find Unscanned", "Locate road sections which have been partially scanned")
+        { button: ButtonWidget? -> RoadmapController.handleFindUnscannedPress(button) }
 
-        putSpacer(shortHeight)
+        putSpacer(mediumHeight)
 
         putHeader("Config Options")
-        putConfigField(maxWidth, mediumHeight, "Draw Particles", "Display particles on road surfaces", "draw_particles")
-        putConfigField(maxWidth, mediumHeight, "Particle Chunk Radius", "Maximum distance that road surface particles should be drawn", "particle_chunk_radius")
+        putConfigField(maxWidth, mediumHeight, "Draw Road Particles", "Display particles on road surfaces", "draw_road_particles")
+        putConfigField(maxWidth, mediumHeight, "Draw Marker Particles", "Display particles at marker positions", "draw_marker_particles")
+        putConfigField(maxWidth, mediumHeight, "Particle Radius", "Maximum distance from the player that particles should be drawn", "particle_radius")
         putConfigField(maxWidth, mediumHeight, "Scan Radius", "How far away from the player the scanner can record blocks", "scan_radius")
         putConfigField(maxWidth, mediumHeight, "Scan Height", "How many blocks high to scan when searching for the ceiling", "scan_height")
         putConfigField(maxWidth, mediumHeight, "Scan Everything", "Scan all blocks in the player radius instead of just scanning near roads", "scan_everything")
@@ -50,11 +57,13 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         putConfigField(maxWidth, mediumHeight, "Terrain Blocks", "Which blocks are recorded as terrain (scanner considers all solid blocks not mentioned here as terrain)", "terrain_blocks")
         putConfigField(maxWidth, mediumHeight, "Ignored Blocks", "Which blocks are ignored by the scanner (scanner ignores all transparent blocks not mentioned here)", "ignored_blocks")
 
-        putSpacer(shortHeight)
+        putSpacer(mediumHeight)
 
         putHeader("Other Controls")
-        putButton(maxWidth, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
-        { button: ButtonWidget? -> RoadmapController.handleReloadPress(button) }
+        putButton(maxWidth - shortWidth - spacing, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
+        { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
+        putButton(shortWidth, mediumHeight, "Clear Data", "Delete all roadmap data for this world")
+        { button: ButtonWidget? -> RoadmapController.handleClearDataPress(button) }
     }
 
     override fun render(matrices: MatrixStack?, mouseX: Int, mouseY: Int, delta: Float) {
@@ -109,7 +118,12 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
     }
 
     fun putConfigField(width: Int, height: Int, label: String, tooltip: String, configId: String) {
+        val type = Config.getOption(configId)?.type
         val labelWidth = 120
+        val buttonWidth = height
+        val fieldWidth =
+            if ((type == ConfigType.INT) or (type == ConfigType.DOUBLE)) maxWidth - labelWidth - buttonWidth * 2 - spacing * 3
+            else maxWidth - labelWidth - spacing
 
         val text = TextWidget(
             pointerX, pointerY, labelWidth, height,
@@ -120,35 +134,112 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         addDrawableChild(text)
 
         when (Config.getOption(configId)?.type) {
-            ConfigType.BOOLEAN -> {
+        ConfigType.BOOLEAN -> {
 
-                addDrawableChild(ButtonWidget.builder(
-                    Text.literal(Config.getOptionString(configId))
-                ) { button: ButtonWidget? ->
-                    run {
-                        RoadmapController.handleConfigToggle(label, configId)
-                        button?.message = Text.literal(Config.getOptionString(configId))
-                    }
+            // Toggle button
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal(Config.getOptionString(configId))
+            ) { button: ButtonWidget? ->
+                run {
+                    RoadmapController.handleConfigToggle(label, configId)
+                    button?.message = Text.literal(Config.getOptionString(configId))
                 }
-                    .dimensions(pointerX + labelWidth + spacing, pointerY, maxWidth - labelWidth - spacing, height)
-                    .tooltip(Tooltip.of(Text.literal(tooltip)))
-                    .build())
-
             }
-            else -> {
+                .dimensions(pointerX + labelWidth + spacing, pointerY, fieldWidth, height)
+                .tooltip(Tooltip.of(Text.literal(tooltip)))
+                .build())
 
-                val field = TextFieldWidget(
-                    MinecraftClient.getInstance().textRenderer,
-                    pointerX + labelWidth + spacing + 1, pointerY + 1, maxWidth - labelWidth - spacing - 2, height - 2,
-                    Text.literal(label),
-                )
-                field.text = Config.getOptionString(configId)
-                field.setChangedListener { value: String? -> RoadmapController.handleConfigChange(value, label, configId) }
-                field.setTooltip(Tooltip.of(Text.literal(tooltip)))
-                field.setMaxLength(2048)
-                addDrawableChild(field)
+        } ConfigType.INT -> {
 
+            // Number field
+            val field = TextFieldWidget(
+                MinecraftClient.getInstance().textRenderer,
+                pointerX + labelWidth + spacing + 1, pointerY + 1, fieldWidth - 2, height - 2,
+                Text.literal(label),
+            )
+            field.setMaxLength(2048)
+            field.text = Config.getOptionString(configId)
+            field.setChangedListener { value: String? -> RoadmapController.handleConfigChange(value, label, configId) }
+            field.setTooltip(Tooltip.of(Text.literal(tooltip)))
+            addDrawableChild(field)
+
+            // Increment button
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal("+")
+            ) {
+                run {
+                    RoadmapController.handleConfigAdjust(1, label, configId)
+                    field.text = Config.getOptionString(configId)
+                }
             }
+                .dimensions(pointerX + labelWidth + fieldWidth + spacing * 2, pointerY, buttonWidth, height)
+                .build())
+
+            // Decrement button
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal("-")
+            ) {
+                run {
+                    RoadmapController.handleConfigAdjust(-1, label, configId)
+                    field.text = Config.getOptionString(configId)
+                }
+            }
+                .dimensions(pointerX + labelWidth + fieldWidth + buttonWidth + spacing * 3, pointerY, buttonWidth, height)
+                .build())
+
+        } ConfigType.DOUBLE -> {
+
+            // Number field
+            val field = TextFieldWidget(
+                MinecraftClient.getInstance().textRenderer,
+                pointerX + labelWidth + spacing + 1, pointerY + 1, fieldWidth - 2, height - 2,
+                Text.literal(label),
+            )
+            field.setMaxLength(2048)
+            field.text = Config.getOptionString(configId)
+            field.setChangedListener { value: String? -> RoadmapController.handleConfigChange(value, label, configId) }
+            field.setTooltip(Tooltip.of(Text.literal(tooltip)))
+            addDrawableChild(field)
+
+            // Increment button
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal("+")
+            ) {
+                run {
+                    RoadmapController.handleConfigAdjust(1.0, label, configId)
+                    field.text = Config.getOptionString(configId)
+                }
+            }
+                .dimensions(pointerX + labelWidth + fieldWidth + spacing * 2, pointerY, buttonWidth, height)
+                .build())
+
+            // Decrement button
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal("-")
+            ) {
+                run {
+                    RoadmapController.handleConfigAdjust(-1.0, label, configId)
+                    field.text = Config.getOptionString(configId)
+                }
+            }
+                .dimensions(pointerX + labelWidth + fieldWidth + buttonWidth + spacing * 3, pointerY, buttonWidth, height)
+                .build())
+
+        } else -> {
+
+            // Text field
+            val field = TextFieldWidget(
+                MinecraftClient.getInstance().textRenderer,
+                pointerX + labelWidth + spacing + 1, pointerY + 1, fieldWidth - 2, height - 2,
+                Text.literal(label),
+            )
+            field.setMaxLength(2048)
+            field.text = Config.getOptionString(configId)
+            field.setChangedListener { value: String? -> RoadmapController.handleConfigChange(value, label, configId) }
+            field.setTooltip(Tooltip.of(Text.literal(tooltip)))
+            addDrawableChild(field)
+
+        }
         }
 
         movePointer(maxWidth, height)

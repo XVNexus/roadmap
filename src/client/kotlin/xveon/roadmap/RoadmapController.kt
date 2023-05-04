@@ -19,14 +19,40 @@ object RoadmapController {
         RoadmapClient.clearSurroundingChunks(MinecraftClient.getInstance())
     }
 
-    fun handleFindNewPress(button: ButtonWidget?) {
-        RoadmapClient.logger.info("GUI: Find New button pressed")
+    fun handleFindUnscannedPress(button: ButtonWidget?) {
+        RoadmapClient.logger.info("GUI: Find Unscanned button pressed")
         RoadmapClient.findUnscannedRoads(MinecraftClient.getInstance())
     }
 
-    fun handleReloadPress(button: ButtonWidget?) {
-        RoadmapClient.logger.info("GUI: Reload button pressed")
-        RoadmapClient.reloadFiles(MinecraftClient.getInstance())
+    fun handleReloadDataPress(button: ButtonWidget?) {
+        RoadmapClient.logger.info("GUI: Reload Data button pressed")
+        RoadmapClient.reloadData(MinecraftClient.getInstance())
+    }
+
+    fun handleClearDataPress(button: ButtonWidget?) {
+        RoadmapClient.logger.info("GUI: Clear Data button pressed")
+        RoadmapClient.clearRoadmap(MinecraftClient.getInstance())
+    }
+
+    fun handleConfigToggle(label: String, configId: String) {
+        Config[configId] = !(Config[configId] as Boolean)
+        RoadmapClient.logger.info("UI: Changed option '$label' to ${Config[configId]}")
+        RoadmapClient.notifyPlayer("Changed option '$label' to ${Config[configId]}.")
+        Config.saveFile()
+    }
+
+    fun handleConfigAdjust(amount: Int, label: String, configId: String) {
+        Config[configId] = (Config[configId] as Int) + amount
+        RoadmapClient.logger.info("UI: Changed option '$label' to ${Config[configId]}")
+        RoadmapClient.notifyPlayer("Changed option '$label' to ${Config[configId]}.")
+        Config.saveFile()
+    }
+
+    fun handleConfigAdjust(amount: Double, label: String, configId: String) {
+        Config[configId] = (Config[configId] as Double) + amount
+        RoadmapClient.logger.info("UI: Changed option '$label' to ${Config[configId]}")
+        RoadmapClient.notifyPlayer("Changed option '$label' to ${Config[configId]}.")
+        Config.saveFile()
     }
 
     fun handleConfigChange(value: String?, label: String, configId: String) {
@@ -36,12 +62,5 @@ object RoadmapController {
             RoadmapClient.notifyPlayer("Changed option '$label' to ${Config[configId]}.")
             Config.saveFile()
         }
-    }
-
-    fun handleConfigToggle(label: String, configId: String) {
-        Config[configId] = !(Config[configId] as Boolean)
-        RoadmapClient.logger.info("UI: Changed option '$label' to ${Config[configId]}")
-        RoadmapClient.notifyPlayer("Changed option '$label' to ${Config[configId]}.")
-        Config.saveFile()
     }
 }

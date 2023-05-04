@@ -4,16 +4,16 @@ import net.minecraft.block.BlockState
 import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.util.math.BlockPos
 
-class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
+class RoadmapScanner(val roadmap: ScannedRoadmap) {
     fun scan(player: ClientPlayerEntity) {
         // Used to keep track of which blocks are scanned and store a queue of blocks waiting to be scanned
-        val tracker = ScannedBlockTracker()
+        val tracker = ScannedBlockTracker(roadmap)
 
         val originBlock = getFloorBlockAtPos(player.blockPos, Pair(Config["scan_height"] as Int, 0), player) ?: return
         if (!originBlock.isRoad) return
 
         originBlock.clearance = getClearanceOfBlock(originBlock, Config["scan_height"] as Int, player)
-        scannedRoadmap.setBlock(originBlock)
+        roadmap.setBlock(originBlock)
         tracker.markPosScanned(originBlock.pos)
         tracker.enqueuePendingPositions(getAdjacentPositions(originBlock.pos))
 
@@ -23,25 +23,26 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
 
             val nextPendingPos = tracker.dequeuePendingPos()
             if (!isPosWithinRangeOfPlayer(nextPendingPos, Config["scan_radius"] as Double, player)) {
-                if (!scannedRoadmap.containsBlocks(nextPendingPos, 3))
-                    scannedRoadmap.setBlock(ScannedBlock.void(nextPendingPos))
-                tracker.markPosScanned(nextPendingPos)
-                continue
-            }
-            val nextScannedBlock = getFloorBlockAtPos(nextPendingPos, Pair(1, 1), player)
-            if (nextScannedBlock == null) {
-                scannedRoadmap.removeVoid(nextPendingPos, 3)
-                scannedRoadmap.setBlock(ScannedBlock.unknown(nextPendingPos))
+                if (!roadmap.containsBlock(nextPendingPos, Constants.MARKER_HEIGHT))
+                    roadmap.addMarker(nextPendingPos, RoadmapMarkerType.CUTOFF_POINT)
                 tracker.markPosScanned(nextPendingPos)
                 continue
             }
 
-            nextScannedBlock.clearance = getClearanceOfBlock(nextScannedBlock, Config["scan_height"] as Int, player)
-            scannedRoadmap.removeVoid(nextScannedBlock.pos, 3)
-            scannedRoadmap.setBlock(nextScannedBlock)
+            val nextScannedBlock = getFloorBlockAtPos(nextPendingPos, Pair(1, 1), player)
+            if (nextScannedBlock == null) {
+                roadmap.removeMarker(nextPendingPos, RoadmapMarkerType.CUTOFF_POINT)
+                tracker.markPosScanned(nextPendingPos)
+                continue
+            }
+
+            roadmap.removeMarker(nextScannedBlock.pos, RoadmapMarkerType.CUTOFF_POINT)
             tracker.markPosScanned(nextScannedBlock.pos)
-            if (nextScannedBlock.isRoad)
+            if (nextScannedBlock.isRoad) {
+                nextScannedBlock.clearance = getClearanceOfBlock(nextScannedBlock, Config["scan_height"] as Int, player)
+                roadmap.setBlock(nextScannedBlock)
                 tracker.enqueuePendingPositions(getAdjacentPositions(nextScannedBlock.pos))
+            }
 
             if (i >= Constants.MAX_SCAN_ITERATIONS) {
                 RoadmapClient.logger.warn("Scan reached ${Constants.MAX_SCAN_ITERATIONS} iterations, stopping early.")
@@ -54,14 +55,10 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
 
     fun getAdjacentPositions(pos: BlockPos): Set<BlockPos> {
         return setOf(
-            pos.add(-1, 0, -1),
-            pos.add(0, 0, -1),
-            pos.add(1, 0, -1),
-            pos.add(-1, 0, 0),
-            pos.add(1, 0, 0),
-            pos.add(-1, 0, 1),
-            pos.add(0, 0, 1),
-            pos.add(1, 0, 1),
+            pos.add(0, 0, -1), // North
+            pos.add(1, 0, 0), // East
+            pos.add(0, 0, 1), // South
+            pos.add(-1, 0, 0), // West
         )
     }
 
@@ -84,7 +81,7 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
             val blockBelow = getBlockStateOrCachedBlockState(testPos.subtract(BlockPos(0, 1, 0)), player)
 
             if (Util.isBlockSolid(testBlock) and !Util.isBlockSolid(blockBelow))
-                return ScannedBlock.fromRoadBlockFilter(testPos, 0, Util.getBlockName(testBlock))
+                return ScannedBlock.detect(testPos, 0, Util.getBlockName(testBlock))
         }
         return null
     }
@@ -96,7 +93,7 @@ class RoadmapScanner(val scannedRoadmap: ScannedRoadmap) {
             val blockAbove = getBlockStateOrCachedBlockState(testPos.add(BlockPos(0, 1, 0)), player)
 
             if (Util.isBlockSolid(testBlock) and !Util.isBlockSolid(blockAbove))
-                return ScannedBlock.fromRoadBlockFilter(testPos, 0, Util.getBlockName(testBlock))
+                return ScannedBlock.detect(testPos, 0, Util.getBlockName(testBlock))
         }
         return null
     }

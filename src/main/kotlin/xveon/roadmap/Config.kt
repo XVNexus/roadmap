@@ -7,8 +7,9 @@ import java.lang.Exception
 
 object Config {
     var options = mutableMapOf(
-        Pair("draw_particles", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false)),
-        Pair("particle_chunk_radius", ConfigOption(ConfigType.INT, false, defaultValue = 3)),
+        Pair("draw_road_particles", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false)),
+        Pair("draw_marker_particles", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false)),
+        Pair("particle_radius", ConfigOption(ConfigType.INT, false, defaultValue = 64)),
         Pair("scan_radius", ConfigOption(ConfigType.DOUBLE, false, defaultValue = 64.0)),
         Pair("scan_height", ConfigOption(ConfigType.INT, false, defaultValue = 16)),
         Pair("scan_everything", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false)),

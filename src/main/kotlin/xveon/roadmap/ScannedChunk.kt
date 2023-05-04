@@ -47,7 +47,7 @@ data class ScannedChunk(var pos: ChunkPos) {
     override fun toString(): String {
         var result = ""
         for (block in blocks.values)
-            result += '\n' + block.toString()
+            result += "\n$block"
         return result.substring(1)
     }
 

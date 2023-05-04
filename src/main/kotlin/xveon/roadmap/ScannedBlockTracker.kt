@@ -3,7 +3,7 @@ package xveon.roadmap
 import net.minecraft.util.math.BlockPos
 import java.util.*
 
-class ScannedBlockTracker {
+class ScannedBlockTracker(private val roadmap: ScannedRoadmap) {
     private val scannedPositions = mutableListOf<BlockPos>()
     private val pendingPositions: Queue<BlockPos> = LinkedList()
 
@@ -38,7 +38,7 @@ class ScannedBlockTracker {
 
     fun enqueuePendingPositions(positions: Set<BlockPos>) {
         for (pos in positions)
-            if (!isPosScanned(pos) and !isPosPending(pos))
+            if (!isPosScanned(pos) and !isPosPending(pos) and !roadmap.testMarker(pos, RoadmapMarkerType.SCAN_FENCE))
                 pendingPositions.add(pos)
     }
 

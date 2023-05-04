@@ -7,6 +7,13 @@ import kotlin.math.roundToInt
 class PosGroupCollection(var mergeRange: Int) {
     private val groups = mutableSetOf<PosGroup>()
 
+    fun getCenterPositions(): MutableSet<BlockPos> {
+        val result = mutableSetOf<BlockPos>()
+        for (group in groups)
+            result.add(group.center)
+        return result
+    }
+
     fun getGroups(): MutableSet<PosGroup> {
         return groups
     }

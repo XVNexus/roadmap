@@ -14,8 +14,8 @@ import net.minecraft.client.network.ServerAddress
 import net.minecraft.client.option.KeyBinding
 import net.minecraft.client.util.InputUtil
 import net.minecraft.particle.DustParticleEffect
+import net.minecraft.particle.ParticleTypes
 import net.minecraft.text.Text
-import net.minecraft.util.math.BlockPos
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
@@ -26,7 +26,7 @@ object RoadmapClient : ClientModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
     private lateinit var kbScan: KeyBinding
     private lateinit var kbUi: KeyBinding
-    private var scannedRoadmap = ScannedRoadmap()
+    private var roadmap = ScannedRoadmap()
     private var ui = RoadmapGui()
     private var masterTickCount = 0
     private var lastChunkPos = ChunkPos(0, 0)
@@ -40,8 +40,8 @@ object RoadmapClient : ClientModInitializer {
         logger.info("Loaded config")
 
         if (FileSys.containsFiles(Constants.OUTPUT_PATH)) {
-            scannedRoadmap = ScannedRoadmap.readFiles()
-            logger.info("Loaded ${scannedRoadmap.getBlockCount()} previously scanned blocks.")
+            roadmap = ScannedRoadmap.readFiles()
+            logger.info("Loaded ${roadmap.getBlockCount()} road blocks and ${roadmap.markers.count()} markers")
         }
 
         kbScan = KeyBindingHelper.registerKeyBinding(
@@ -73,7 +73,8 @@ object RoadmapClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
             masterTickCount++
             if (masterTickCount % 20 == 0) updateSurroundingChunks(client)
-            if (Config["draw_particles"] as Boolean) drawRoadParticles(client)
+            if (Config["draw_road_particles"] as Boolean) drawRoadParticles(client)
+            if (Config["draw_marker_particles"] as Boolean) drawMarkerParticles(client)
             while (kbScan.wasPressed()) scanSurroundingRoads(client)
             while (kbUi.wasPressed()) openUi(client)
         })
@@ -86,28 +87,62 @@ object RoadmapClient : ClientModInitializer {
 
         for (chunk in surroundingChunks) {
             for (block in chunk.blocks.values) {
-                if (block.isRoad) {
+                val distFromPlayer = sqrt(block.pos.getSquaredDistance(player.pos))
+                if (rand.nextInt(distFromPlayer.toInt().coerceIn(1, 40)) != 0) continue
 
-                    val distFromPlayer = sqrt(block.pos.getSquaredDistance(player.pos))
-                    if (rand.nextInt(distFromPlayer.toInt().coerceIn(1, 40)) != 0) continue
+                particleManager.addParticle(
+                    DustParticleEffect(Vector3f(0.0F, 1.0F, 0.0F), 1.0F),
+                    block.pos.x.toDouble() + rand.nextDouble(),
+                    block.pos.y.toDouble() + 1,
+                    block.pos.z.toDouble() + rand.nextDouble(),
+                    0.0, 0.0, 0.0
+                )
+            }
+        }
+    }
+
+    fun drawMarkerParticles(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+        val particleManager = client.particleManager
+        val rand = Random(masterTickCount)
+
+        val particleRadius = Config["particle_radius"] as Int
+        val markerHeight = Constants.MARKER_HEIGHT
+        for (marker in roadmap.markers) {
+            val distFromPlayer = sqrt(marker.pos.getSquaredDistance(player.pos))
+            if (distFromPlayer > particleRadius) continue
+            val posX = marker.pos.x.toDouble()
+            val posY = marker.pos.y.toDouble()
+            val posZ = marker.pos.z.toDouble()
+
+            for (i in -markerHeight..markerHeight + 1) when (marker.type) {
+                RoadmapMarkerType.CUTOFF_POINT -> {
 
                     particleManager.addParticle(
-                        DustParticleEffect(Vector3f(0.0F, 1.0F, 0.0F), 1.0F),
-                        block.pos.x.toDouble() + rand.nextDouble(),
-                        block.pos.y.toDouble() + 1,
-                        block.pos.z.toDouble() + rand.nextDouble(),
+                        ParticleTypes.SMOKE,
+                        posX + rand.nextDouble(),
+                        posY + rand.nextDouble(-markerHeight.toDouble(), markerHeight.toDouble() + 1),
+                        posZ + rand.nextDouble(),
                         0.0, 0.0, 0.0
                     )
 
-                } else if (block.isVoid()) {
-
-                    if (rand.nextInt(10) != 0) continue
+                } RoadmapMarkerType.PATHFINDER_GOAL -> {
 
                     particleManager.addParticle(
-                        DustParticleEffect(Vector3f(1.0F, 0.0F, 1.0F), 5.0F),
-                        block.pos.x.toDouble() + rand.nextDouble(),
-                        block.pos.y.toDouble() + rand.nextDouble(1.0, 2.0),
-                        block.pos.z.toDouble() + rand.nextDouble(),
+                        ParticleTypes.SCRAPE,
+                        posX + rand.nextDouble(),
+                        posY + rand.nextDouble(-markerHeight.toDouble(), markerHeight.toDouble() + 1),
+                        posZ + rand.nextDouble(),
+                        0.0, 0.0, 0.0
+                    )
+
+                } RoadmapMarkerType.SCAN_FENCE -> {
+
+                    particleManager.addParticle(
+                        ParticleTypes.DRIPPING_OBSIDIAN_TEAR,
+                        posX + rand.nextDouble(),
+                        posY + rand.nextDouble(-markerHeight.toDouble(), markerHeight.toDouble() + 1),
+                        posZ + rand.nextDouble(),
                         0.0, 0.0, 0.0
                     )
 
@@ -129,49 +164,50 @@ object RoadmapClient : ClientModInitializer {
 
         val currentChunkPos = ChunkPos.fromBlockPos(player.blockPos)
         if ((currentChunkPos != lastChunkPos) or force) {
-            surroundingChunks = scannedRoadmap.getChunksInRadius(currentChunkPos, Config["particle_chunk_radius"] as Int)
+            surroundingChunks = roadmap.getChunksInRadius(currentChunkPos, (Config["particle_radius"] as Int) / Constants.CHUNK_SIZE)
             lastChunkPos = currentChunkPos
         }
     }
 
     fun scanSurroundingRoads(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
-        logger.info("Scanning surrounding blocks...")
 
-        val startBlockCount = scannedRoadmap.getBlockCount()
-        val scanner = RoadmapScanner(scannedRoadmap)
+        val scanner = RoadmapScanner(roadmap)
         scanner.scan(player)
-        scannedRoadmap.writeFiles()
-        val endBlockCount = scannedRoadmap.getBlockCount()
+        // roadmap.saveState()
+        roadmap.writeFiles()
 
-        val newBlocks = endBlockCount - startBlockCount
-        if (newBlocks > 0) {
-            logger.info("Saved $newBlocks blocks to scan data")
-            notifyPlayer("Saved $newBlocks blocks to scan data.", player)
-        } else {
-            logger.info("No new blocks were saved to scan data")
-            notifyPlayer("No new blocks were saved to scan data.", player)
-        }
+        notifyPlayer("Scan completed.", player)
 
         updateSurroundingChunks(client, true)
     }
 
+    fun undoLastScan(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+
+        val undoSuccessful = false // roadmap.restoreState()
+        if (undoSuccessful) {
+            roadmap.writeFiles()
+            updateSurroundingChunks(client, true)
+            notifyPlayer("Last scan has been reverted.", player)
+        } else {
+            notifyPlayer("No saved state to revert to!", player)
+        }
+    }
+
     fun clearSurroundingChunks(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
-        logger.info("Clearing surrounding chunk data...")
 
-        val startChunkCount = scannedRoadmap.chunks.count()
-        for (chunk in scannedRoadmap.getChunksInRadius(ChunkPos.fromBlockPos(player.blockPos), 1))
-            scannedRoadmap.removeChunk(chunk.pos)
-        scannedRoadmap.writeFiles()
-        val endChunkCount = scannedRoadmap.chunks.count()
+        val startChunkCount = roadmap.chunks.count()
+        for (chunk in roadmap.getChunksInRadius(ChunkPos.fromBlockPos(player.blockPos), 1))
+            roadmap.removeChunk(chunk.pos)
+        roadmap.writeFiles()
+        val endChunkCount = roadmap.chunks.count()
 
         val removedChunks = startChunkCount - endChunkCount
         if (removedChunks > 0) {
-            logger.info("Removed $removedChunks chunks from scan data")
             notifyPlayer("Removed $removedChunks chunks from scan data.", player)
         } else {
-            logger.info("No chunks were removed from scan data")
             notifyPlayer("No chunks were removed from scan data.", player)
         }
 
@@ -181,35 +217,37 @@ object RoadmapClient : ClientModInitializer {
     fun findUnscannedRoads(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
-        val posGroups = PosGroupCollection(10)
-        for (block in scannedRoadmap.getAllBlocks().values) if (block.isVoid())
-            posGroups.addPos(block.pos)
+        val posGroups = PosGroupCollection(32)
+        for (marker in roadmap.getMarkers(RoadmapMarkerType.CUTOFF_POINT))
+            posGroups.addPos(marker.pos)
 
         var result = ""
-        for (group in posGroups.getGroups())
-            result += ", (${group.center.x}, ${group.center.y}, ${group.center.z})"
+        for (pos in posGroups.getCenterPositions())
+            result += ", (${pos.x}, ${pos.y}, ${pos.z})"
         if (result.isNotEmpty())
             messagePlayer("Positions of all unscanned road tails: ${result.substring(2)}.", player)
         else
             messagePlayer("Could not find any unscanned road tails.", player)
     }
 
-    fun reloadFiles(client: MinecraftClient) {
+    fun reloadData(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
-        BlockStateCache.clearBlockStates()
-        scannedRoadmap = ScannedRoadmap.readFiles()
-        Config.reloadFile()
 
-        logger.info("Reloaded scan data and config")
+        BlockStateCache.clearBlockStates()
+        roadmap = ScannedRoadmap.readFiles()
+        Config.reloadFile()
         notifyPlayer("Reloaded scan data and config.", player)
 
         updateSurroundingChunks(client, true)
     }
-
-    fun undoLastScan(client: MinecraftClient) {
+    
+    fun clearRoadmap(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
-        logger.warn("Undo feature not implemented!")
-        notifyPlayer("The undo feature will be added in a future version.", player)
+
+        BlockStateCache.clearBlockStates()
+        roadmap.clearMarkers()
+        roadmap.clearChunks()
+        notifyPlayer("Cleared map data.", player)
 
         updateSurroundingChunks(client, true)
     }

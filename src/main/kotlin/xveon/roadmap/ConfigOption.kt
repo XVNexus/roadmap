@@ -35,7 +35,7 @@ class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues:
     fun fromString(raw: String) {
         if (isList) {
             values.clear()
-            for (item in raw.split(Pattern.compile(", *"))) if (item.isNotEmpty())
+            for (item in raw.split(Regex(", *"))) if (item.isNotEmpty())
                 values.add(parseValue(item, type))
         } else {
             value = parseValue(raw, type)

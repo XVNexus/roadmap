@@ -1,7 +1,5 @@
 package xveon.roadmap
 
-import java.util.regex.Pattern
-
 class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues: MutableList<Any>? = null, val defaultValue: Any? = null) {
     var values = mutableListOf<Any>()
     var value: Any
@@ -50,19 +48,19 @@ class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues:
                 ConfigType.DOUBLE -> value.toString()
                 ConfigType.STRING -> value as String
                 ConfigType.ENUM -> value.toString().lowercase().replace('_', ' ')
-                ConfigType.BLOCK -> Util.compressBlockName(value as String)
+                ConfigType.ID -> Util.compressRegistryName(value as String)
             }
         }
 
         fun parseValue(raw: String, type: ConfigType): Any {
             val trimmed = raw.trim()
             return when (type) {
-                ConfigType.BOOLEAN -> trimmed.startsWith('t') or trimmed.startsWith('y')
+                ConfigType.BOOLEAN -> trimmed.startsWith('t') || trimmed.startsWith('y')
                 ConfigType.INT -> trimmed.toInt()
                 ConfigType.DOUBLE -> trimmed.toDouble()
                 ConfigType.STRING -> trimmed
                 ConfigType.ENUM -> trimmed.uppercase().replace(' ', '_')
-                ConfigType.BLOCK -> Util.expandBlockName(trimmed)
+                ConfigType.ID -> Util.expandRegistryName(trimmed)
             }
         }
     }

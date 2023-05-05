@@ -1,5 +1,5 @@
 package xveon.roadmap
 
 enum class ConfigType {
-    BOOLEAN, ENUM, INT, DOUBLE, STRING, BLOCK
+    BOOLEAN, ENUM, INT, DOUBLE, STRING, ID
 }

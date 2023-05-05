@@ -5,9 +5,7 @@ import java.io.IOException
 
 data class RoadmapMarker(var pos: BlockPos, var type: RoadmapMarkerType) {
     fun testPos(pos: BlockPos): Boolean {
-        val xzEqual = pos.x == this.pos.x && pos.y == this.pos.y
-        val yInRange = pos.y >= this.pos.y - Constants.MARKER_HEIGHT && pos.y <= this.pos.y + Constants.MARKER_HEIGHT
-        return xzEqual && yInRange
+        return Util.isPosNearOtherPos(pos, this.pos, Constants.MARKER_HEIGHT)
     }
 
     override fun toString(): String {

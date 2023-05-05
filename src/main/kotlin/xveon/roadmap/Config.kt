@@ -7,15 +7,16 @@ import java.lang.Exception
 
 object Config {
     var options = mutableMapOf(
+        Pair("tool_item", ConfigOption(ConfigType.ID, false, defaultValue = "minecraft:wooden_shovel")),
         Pair("draw_road_particles", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false)),
         Pair("draw_marker_particles", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false)),
         Pair("particle_radius", ConfigOption(ConfigType.INT, false, defaultValue = 64)),
         Pair("scan_radius", ConfigOption(ConfigType.DOUBLE, false, defaultValue = 64.0)),
         Pair("scan_height", ConfigOption(ConfigType.INT, false, defaultValue = 16)),
         Pair("scan_everything", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false)),
-        Pair("road_blocks", ConfigOption(ConfigType.BLOCK, true, defaultValues = mutableListOf("minecraft:dirt_path", "minecraft:gravel"))),
-        Pair("terrain_blocks", ConfigOption(ConfigType.BLOCK, true, defaultValues = mutableListOf())),
-        Pair("ignored_blocks", ConfigOption(ConfigType.BLOCK, true, defaultValues = mutableListOf("minecraft:snow"))),
+        Pair("road_blocks", ConfigOption(ConfigType.ID, true, defaultValues = mutableListOf("minecraft:dirt_path", "minecraft:gravel"))),
+        Pair("terrain_blocks", ConfigOption(ConfigType.ID, true, defaultValues = mutableListOf())),
+        Pair("ignored_blocks", ConfigOption(ConfigType.ID, true, defaultValues = mutableListOf("minecraft:snow"))),
         Pair("undo_history_limit", ConfigOption(ConfigType.INT, false, defaultValue = 10)),
         Pair("enable_clear_button", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false))
     )

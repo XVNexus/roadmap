@@ -80,7 +80,7 @@ class RoadmapScanner(val roadmap: Roadmap) {
             val blockBelow = getBlockStateOrCachedBlockState(testPos.subtract(BlockPos(0, 1, 0)), player)
 
             if (Util.isBlockSolid(testBlock) && !Util.isBlockSolid(blockBelow))
-                return RoadmapBlock.detect(testPos, 0, Util.getBlockName(testBlock))
+                return RoadmapBlock.detect(testPos, 0, Util.getRegistryName(testBlock))
         }
         return null
     }
@@ -92,7 +92,7 @@ class RoadmapScanner(val roadmap: Roadmap) {
             val blockAbove = getBlockStateOrCachedBlockState(testPos.add(BlockPos(0, 1, 0)), player)
 
             if (Util.isBlockSolid(testBlock) && !Util.isBlockSolid(blockAbove))
-                return RoadmapBlock.detect(testPos, 0, Util.getBlockName(testBlock))
+                return RoadmapBlock.detect(testPos, 0, Util.getRegistryName(testBlock))
         }
         return null
     }

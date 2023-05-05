@@ -10,12 +10,12 @@ object RoadmapController {
     }
 
     fun handleUndoPress(button: ButtonWidget?) {
-        RoadmapClient.logger.info("GUI: Undo Scan button pressed")
+        RoadmapClient.logger.info("GUI: Undo button pressed")
         RoadmapClient.undoOperation(MinecraftClient.getInstance())
     }
 
     fun handleRedoPress(button: ButtonWidget?) {
-        RoadmapClient.logger.info("GUI: Redo Scan button pressed")
+        RoadmapClient.logger.info("GUI: Redo button pressed")
         RoadmapClient.redoOperation(MinecraftClient.getInstance())
     }
 

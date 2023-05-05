@@ -16,6 +16,8 @@ import net.minecraft.client.util.InputUtil
 import net.minecraft.particle.DustParticleEffect
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.text.Text
+import net.minecraft.util.hit.HitResult
+import net.minecraft.util.math.BlockPos
 import net.minecraft.world.RaycastContext
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
@@ -25,9 +27,8 @@ import kotlin.random.Random
 
 object RoadmapClient : ClientModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
-    private lateinit var kbScan: KeyBinding
+    private lateinit var kbMain: KeyBinding
     private lateinit var kbUi: KeyBinding
-    private lateinit var kbFence: KeyBinding
     private var roadmap = Roadmap()
     private var ui = RoadmapGui()
     private var masterTickCount = 0
@@ -46,9 +47,9 @@ object RoadmapClient : ClientModInitializer {
             logger.info("Loaded ${roadmap.getBlockCount()} road blocks and ${roadmap.markers.count()} markers")
         }
 
-        kbScan = KeyBindingHelper.registerKeyBinding(
+        kbMain = KeyBindingHelper.registerKeyBinding(
             KeyBinding(
-                "key.roadmap.scan",
+                "key.roadmap.main",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_R,
                 "category.roadmap.main"
@@ -64,16 +65,6 @@ object RoadmapClient : ClientModInitializer {
             )
         )
 
-
-        kbFence = KeyBindingHelper.registerKeyBinding(
-            KeyBinding(
-                "key.roadmap.fence",
-                InputUtil.Type.MOUSE,
-                GLFW.GLFW_MOUSE_BUTTON_RIGHT,
-                "category.roadmap.main"
-            )
-        )
-
         ClientLifecycleEvents.CLIENT_STARTED.register(ClientStarted { client: MinecraftClient ->
             handleClientStarted(client)
         })
@@ -84,17 +75,19 @@ object RoadmapClient : ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client: MinecraftClient ->
             masterTickCount++
-            if (masterTickCount % 20 == 0) updateSurroundingChunks(client)
+            val player = client.player ?: return@EndTick
             if (Config["draw_road_particles"] as Boolean) drawRoadParticles(client)
             if (Config["draw_marker_particles"] as Boolean) drawMarkerParticles(client)
-            while (kbScan.wasPressed()) scanSurroundingRoads(client)
+            while (kbMain.wasPressed())
+                if (isUsingTool(player)) runToolOperation(client)
+                else scanSurroundingRoads(client)
             while (kbUi.wasPressed()) openUi(client)
-            while (kbFence.wasPressed()) toggleFence(client)
+            if (masterTickCount % 20 == 0) updateParticleChunks(client)
         })
     }
 
     fun drawRoadParticles(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
         val particleManager = client.particleManager
         val rand = Random(masterTickCount)
 
@@ -103,11 +96,15 @@ object RoadmapClient : ClientModInitializer {
                 val distFromPlayer = sqrt(block.pos.getSquaredDistance(player.pos))
                 if (rand.nextInt(distFromPlayer.toInt().coerceIn(1, 40)) != 0) continue
 
+                val posX = block.pos.x.toDouble()
+                val posY = block.pos.y.toDouble()
+                val posZ = block.pos.z.toDouble()
+
                 particleManager.addParticle(
                     DustParticleEffect(Vector3f(0.0F, 1.0F, 0.0F), 1.0F),
-                    block.pos.x.toDouble() + rand.nextDouble(),
-                    block.pos.y.toDouble() + 1,
-                    block.pos.z.toDouble() + rand.nextDouble(),
+                    posX + rand.nextDouble(),
+                    posY + 1,
+                    posZ + rand.nextDouble(),
                     0.0, 0.0, 0.0
                 )
             }
@@ -115,7 +112,7 @@ object RoadmapClient : ClientModInitializer {
     }
 
     fun drawMarkerParticles(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
         val particleManager = client.particleManager
         val rand = Random(masterTickCount)
 
@@ -124,6 +121,7 @@ object RoadmapClient : ClientModInitializer {
         for (marker in roadmap.markers) {
             val distFromPlayer = sqrt(marker.pos.getSquaredDistance(player.pos))
             if (distFromPlayer > particleRadius) continue
+
             val posX = marker.pos.x.toDouble()
             val posY = marker.pos.y.toDouble()
             val posZ = marker.pos.z.toDouble()
@@ -131,6 +129,7 @@ object RoadmapClient : ClientModInitializer {
             for (i in -markerHeight..markerHeight) when (marker.type) {
                 RoadmapMarkerType.CUTOFF_POINT -> {
 
+                    if (rand.nextInt(5) != 0) continue
                     particleManager.addParticle(
                         ParticleTypes.SMOKE,
                         posX + rand.nextDouble(),
@@ -151,8 +150,9 @@ object RoadmapClient : ClientModInitializer {
 
                 } RoadmapMarkerType.SCAN_FENCE -> {
 
+                    if (rand.nextInt(5) != 0) continue
                     particleManager.addParticle(
-                        ParticleTypes.DRIPPING_OBSIDIAN_TEAR,
+                        ParticleTypes.FIREWORK,
                         posX + rand.nextDouble(),
                         posY + rand.nextDouble(-markerHeight.toDouble(), markerHeight.toDouble() + 1),
                         posZ + rand.nextDouble(),
@@ -164,39 +164,103 @@ object RoadmapClient : ClientModInitializer {
         }
     }
 
-    fun handleClientStarted(client: MinecraftClient) {
-        // TODO: Do something with this
+    fun drawBlockParticles(pos: BlockPos, color: Vector3f, client: MinecraftClient) {
+        val particleManager = client.particleManager
+        val rand = Random(masterTickCount)
+
+        val posX = pos.x.toDouble()
+        val posY = pos.y.toDouble()
+        val posZ = pos.z.toDouble()
+
+        // TODO: Deshiddify this code
+        val effect = DustParticleEffect(color, 2.0F)
+        for (i in 0..10)
+            particleManager.addParticle(
+                effect,
+                posX + 1.1,
+                posY + rand.nextDouble(),
+                posZ + rand.nextDouble(),
+                0.5, 0.0, 0.0
+            )
+        for (i in 0..10)
+            particleManager.addParticle(
+                effect,
+                posX - 0.1,
+                posY + rand.nextDouble(),
+                posZ + rand.nextDouble(),
+                -0.5, 0.0, 0.0
+            )
+        for (i in 0..10)
+            particleManager.addParticle(
+                effect,
+                posX + rand.nextDouble(),
+                posY + 1.0,
+                posZ + rand.nextDouble(),
+                0.0, 0.5, 0.0
+            )
+        for (i in 0..10)
+            particleManager.addParticle(
+                effect,
+                posX + rand.nextDouble(),
+                posY - 0.1,
+                posZ + rand.nextDouble(),
+                0.0, -0.5, 0.0
+            )
+        for (i in 0..10)
+            particleManager.addParticle(
+                effect,
+                posX + rand.nextDouble(),
+                posY + rand.nextDouble(),
+                posZ + 1.1,
+                0.0, 0.0, 0.5
+            )
+        for (i in 0..10)
+            particleManager.addParticle(
+                effect,
+                posX + rand.nextDouble(),
+                posY + rand.nextDouble(),
+                posZ - 0.1,
+                0.0, 0.0, -0.5
+            )
     }
 
-    fun handleJoinWorld(networkHandler: ClientPlayNetworkHandler, packetSender: PacketSender, client: MinecraftClient) {
-        // TODO: Do something with this
+    fun isUsingTool(player: ClientPlayerEntity): Boolean {
+        return Util.getRegistryName(player.mainHandStack) == Config["tool_item"]
     }
 
-    fun updateSurroundingChunks(client: MinecraftClient, force: Boolean = false) {
-        val player: ClientPlayerEntity = client.player ?: return
-
-        val currentChunkPos = ChunkPos.fromBlockPos(player.blockPos)
-        if ((currentChunkPos != lastChunkPos) or force) {
-            surroundingChunks = roadmap.getChunksInRadius(currentChunkPos, (Config["particle_radius"] as Int) / Constants.CHUNK_SIZE)
-            lastChunkPos = currentChunkPos
-        }
-    }
-
-    fun toggleFence(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
-
-        val raycast = player.world.raycast(RaycastContext(
-            player.pos,
-            player.rotationVector.multiply(10.0),
+    fun getTargetedPos(player: ClientPlayerEntity): BlockPos? {
+        val result = player.world.raycast(RaycastContext(
+            player.eyePos,
+            player.eyePos.add(player.rotationVector.multiply(16.0)),
             RaycastContext.ShapeType.COLLIDER,
             RaycastContext.FluidHandling.NONE,
             player
         ))
-        notifyPlayer("${raycast.blockPos.x} ${raycast.blockPos.y} ${raycast.blockPos.z}", player)
+        return if (result.type == HitResult.Type.BLOCK)
+            result.blockPos
+        else
+            null
+    }
+
+    fun runToolOperation(client: MinecraftClient) {
+        val player = client.player ?: return
+        val pos = getTargetedPos(player) ?: return
+
+        val marker = RoadmapMarker(pos, RoadmapMarkerType.SCAN_FENCE)
+        if (!roadmap.testMarker(marker)) {
+            roadmap.addMarker(marker)
+            drawBlockParticles(pos, Vector3f(0.0F, 1.0F, 0.0F), client)
+            notifyPlayer("Added scan fence at (${marker.pos.x} ${marker.pos.y} ${marker.pos.z}).")
+        } else {
+            roadmap.removeMarker(marker)
+            drawBlockParticles(pos, Vector3f(1.0F, 0.0F, 0.0F), client)
+            notifyPlayer("Removed scan fence at (${marker.pos.x} ${marker.pos.y} ${marker.pos.z}).")
+        }
+        roadmap.writeFiles()
     }
 
     fun undoOperation(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
 
         if (!roadmap.hasUndoHistory()) {
             notifyPlayer("No undo history found.", player)
@@ -205,12 +269,12 @@ object RoadmapClient : ClientModInitializer {
 
         roadmap.revertStateFromUndoHistory()
         roadmap.writeFiles(true)
-        updateSurroundingChunks(client, true)
-        notifyPlayer("Last scan has been reverted.", player)
+        updateParticleChunks(client, true)
+        notifyPlayer("Last operation has been reverted.", player)
     }
 
     fun redoOperation(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
 
         if (!roadmap.hasRedoHistory()) {
             notifyPlayer("No redo history found.", player)
@@ -219,12 +283,20 @@ object RoadmapClient : ClientModInitializer {
 
         roadmap.restoreStateFromRedoHistory()
         roadmap.writeFiles(true)
-        updateSurroundingChunks(client, true)
-        notifyPlayer("Last undone scan has been restored.", player)
+        updateParticleChunks(client, true)
+        notifyPlayer("Last undone operation has been restored.", player)
+    }
+
+    fun handleClientStarted(client: MinecraftClient) {
+        // TODO: Do something with this
+    }
+
+    fun handleJoinWorld(networkHandler: ClientPlayNetworkHandler, packetSender: PacketSender, client: MinecraftClient) {
+        // TODO: Do something with this
     }
 
     fun scanSurroundingRoads(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
 
         roadmap.saveStateToUndoHistory()
         val scanner = RoadmapScanner(roadmap)
@@ -233,11 +305,11 @@ object RoadmapClient : ClientModInitializer {
 
         notifyPlayer("Scan completed.", player)
 
-        updateSurroundingChunks(client, true)
+        updateParticleChunks(client, true)
     }
 
     fun clearSurroundingChunks(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
 
         roadmap.saveStateToUndoHistory()
         val startChunkCount = roadmap.chunks.count()
@@ -253,11 +325,11 @@ object RoadmapClient : ClientModInitializer {
             notifyPlayer("No chunks were removed from scan data.", player)
         }
 
-        updateSurroundingChunks(client, true)
+        updateParticleChunks(client, true)
     }
 
     fun findUnscannedRoads(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
 
         val posGroups = PosGroupCollection(32)
         for (marker in roadmap.getMarkers(RoadmapMarkerType.CUTOFF_POINT))
@@ -273,18 +345,18 @@ object RoadmapClient : ClientModInitializer {
     }
 
     fun reloadData(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
 
         BlockStateCache.clearBlockStates()
         roadmap = Roadmap.readFiles()
         Config.reloadFile()
         notifyPlayer("Reloaded scan data and config.", player)
 
-        updateSurroundingChunks(client, true)
+        updateParticleChunks(client, true)
     }
     
     fun clearData(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
+        val player = client.player ?: return
 
         roadmap.saveStateToUndoHistory()
         roadmap.clearMarkers()
@@ -292,11 +364,21 @@ object RoadmapClient : ClientModInitializer {
         roadmap.writeFiles()
         notifyPlayer("Cleared map data.", player)
 
-        updateSurroundingChunks(client, true)
+        updateParticleChunks(client, true)
     }
 
     fun openUi(client: MinecraftClient) {
         client.setScreenAndRender(ui)
+    }
+
+    fun updateParticleChunks(client: MinecraftClient, force: Boolean = false) {
+        val player = client.player ?: return
+
+        val currentChunkPos = ChunkPos.fromBlockPos(player.blockPos)
+        if (currentChunkPos != lastChunkPos || force) {
+            surroundingChunks = roadmap.getChunksInRadius(currentChunkPos, (Config["particle_radius"] as Int) / Constants.CHUNK_SIZE)
+            lastChunkPos = currentChunkPos
+        }
     }
 
     fun messagePlayer(text: String, providedPlayer: ClientPlayerEntity? = null) {
@@ -310,7 +392,7 @@ object RoadmapClient : ClientModInitializer {
     }
 
     fun getServerIp(client: MinecraftClient): String {
-        val player: ClientPlayerEntity = client.player ?: return ""
+        val player = client.player ?: return ""
         val server = client.server ?: return ""
         return ServerAddress.parse(client.server!!.serverIp).address
     }

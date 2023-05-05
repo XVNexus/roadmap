@@ -50,6 +50,7 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         putSpacer(mediumHeight)
 
         putHeader("Config Options")
+        putConfigField(maxWidth, mediumHeight, "Tool Item", "Which item to hold to use point-and-click roadmap management", "tool_item")
         putConfigField(maxWidth, mediumHeight, "Draw Road Particles", "Display particles on road surfaces", "draw_road_particles")
         putConfigField(maxWidth, mediumHeight, "Draw Marker Particles", "Display particles at marker positions", "draw_marker_particles")
         putConfigField(maxWidth, mediumHeight, "Particle Radius", "Maximum distance from the player that particles should be drawn", "particle_radius")
@@ -132,7 +133,7 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         val labelWidth = 120
         val buttonWidth = height
         val fieldWidth =
-            if ((type == ConfigType.INT) or (type == ConfigType.DOUBLE)) width - labelWidth - buttonWidth * 2 - spacing * 3
+            if (type == ConfigType.INT || type == ConfigType.DOUBLE) width - labelWidth - buttonWidth * 2 - spacing * 3
             else width - labelWidth - spacing
 
         val text = TextWidget(

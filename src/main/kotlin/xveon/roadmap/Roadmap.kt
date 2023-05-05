@@ -15,6 +15,8 @@ class Roadmap(var name: String = "") {
 
     fun saveStateToUndoHistory() {
         undoHistory.push(createClone())
+        if (undoHistory.count() > Config["undo_history_limit"] as Int)
+            undoHistory.removeAt(0)
         redoHistory.clear()
     }
 

@@ -7,7 +7,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.registry.Registries
 import net.minecraft.util.math.BlockPos
 
-object Util {
+object UtilCommon {
     val markersFilenameRegex = Regex("^markers$")
     val chunkFilenameRegex = Regex("^chunk_(-?\\d+)_(-?\\d+)$")
     val roadmapFilenameRegex = Regex("^(markers|chunk_(-?\\d+)_(-?\\d+))$")
@@ -27,7 +27,7 @@ object Util {
     }
 
     fun isBlockSolid(block: BlockState): Boolean {
-        val name = Util.getRegistryName(block)
+        val name = UtilCommon.getRegistryName(block)
         return if ((Config["terrain_blocks"] as MutableList<String>).contains(name))
             true
         else if ((Config["ignored_blocks"] as MutableList<String>).contains(name))

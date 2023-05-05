@@ -17,7 +17,7 @@ object Config {
         Pair("road_blocks", ConfigOption(ConfigType.ID, true, defaultValues = mutableListOf("minecraft:dirt_path", "minecraft:gravel"))),
         Pair("terrain_blocks", ConfigOption(ConfigType.ID, true, defaultValues = mutableListOf())),
         Pair("ignored_blocks", ConfigOption(ConfigType.ID, true, defaultValues = mutableListOf("minecraft:snow"))),
-        Pair("undo_history_limit", ConfigOption(ConfigType.INT, false, defaultValue = 10)),
+        Pair("undo_history_limit", ConfigOption(ConfigType.INT, false, defaultValue = 10))
     )
     val gson = Gson()
 

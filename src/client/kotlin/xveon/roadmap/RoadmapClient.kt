@@ -95,8 +95,6 @@ object RoadmapClient : ClientModInitializer {
         val particleManager = client.particleManager
         val rand = Random(masterTickCount)
 
-        val maxClearance = (Config["scan_height"] as Int).toFloat()
-
         for (chunk in surroundingChunks) {
             for (block in chunk.blocks.values) if (block.isRoad) {
                 val spawnChance = sqrt(block.pos.getSquaredDistance(player.pos)) * 4
@@ -106,10 +104,10 @@ object RoadmapClient : ClientModInitializer {
                 val posY = block.pos.y.toDouble()
                 val posZ = block.pos.z.toDouble()
 
-                // Tunnel road particles will be tinted cyan to indicate that area is not exposed to the sky
+                // Tunnel road particles will be tinted yellow to indicate that area is not exposed to the sky
                 val color =
                     if (block.clearance == 0) Vector3f(1.0F, 1.0F, 1.0F)
-                    else Vector3f(block.clearance / maxClearance, 1.0F, 0.0F)
+                    else Vector3f(1.0F, 1.0F, 0.0F)
                 particleManager.addParticle(
                     DustParticleEffect(color, 1.0F),
                     posX + rand.nextDouble(),
@@ -181,6 +179,7 @@ object RoadmapClient : ClientModInitializer {
     }
 
     fun drawBlockParticles(pos: BlockPos, color: Vector3f, client: MinecraftClient) {
+        val player = client.player ?: return
         val particleManager = client.particleManager
         val rand = Random(masterTickCount)
 
@@ -190,58 +189,64 @@ object RoadmapClient : ClientModInitializer {
 
         // TODO: Deshiddify this code
         val effect = DustParticleEffect(color, 2.0F)
-        for (i in 0..10)
-            particleManager.addParticle(
-                effect,
-                posX + 1.1,
-                posY + rand.nextDouble(),
-                posZ + rand.nextDouble(),
-                0.5, 0.0, 0.0
-            )
-        for (i in 0..10)
-            particleManager.addParticle(
-                effect,
-                posX - 0.1,
-                posY + rand.nextDouble(),
-                posZ + rand.nextDouble(),
-                -0.5, 0.0, 0.0
-            )
-        for (i in 0..10)
-            particleManager.addParticle(
-                effect,
-                posX + rand.nextDouble(),
-                posY + 1.0,
-                posZ + rand.nextDouble(),
-                0.0, 0.5, 0.0
-            )
-        for (i in 0..10)
-            particleManager.addParticle(
-                effect,
-                posX + rand.nextDouble(),
-                posY - 0.1,
-                posZ + rand.nextDouble(),
-                0.0, -0.5, 0.0
-            )
-        for (i in 0..10)
-            particleManager.addParticle(
-                effect,
-                posX + rand.nextDouble(),
-                posY + rand.nextDouble(),
-                posZ + 1.1,
-                0.0, 0.0, 0.5
-            )
-        for (i in 0..10)
-            particleManager.addParticle(
-                effect,
-                posX + rand.nextDouble(),
-                posY + rand.nextDouble(),
-                posZ - 0.1,
-                0.0, 0.0, -0.5
-            )
+        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(1, 0, 0), player)))
+            for (i in 0..10)
+                particleManager.addParticle(
+                    effect,
+                    posX + 1.1,
+                    posY + rand.nextDouble(),
+                    posZ + rand.nextDouble(),
+                    1.0, 0.0, 0.0
+                )
+        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(-1, 0, 0), player)))
+            for (i in 0..10)
+                particleManager.addParticle(
+                    effect,
+                    posX - 0.1,
+                    posY + rand.nextDouble(),
+                    posZ + rand.nextDouble(),
+                    -1.0, 0.0, 0.0
+                )
+        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(0, 1, 0), player)))
+            for (i in 0..10)
+                particleManager.addParticle(
+                    effect,
+                    posX + rand.nextDouble(),
+                    posY + 1.0,
+                    posZ + rand.nextDouble(),
+                    0.0, 1.0, 0.0
+                )
+        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(0, -1, 0), player)))
+            for (i in 0..10)
+                particleManager.addParticle(
+                    effect,
+                    posX + rand.nextDouble(),
+                    posY - 0.1,
+                    posZ + rand.nextDouble(),
+                    0.0, -1.0, 0.0
+                )
+        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(0, 0, 1), player)))
+            for (i in 0..10)
+                particleManager.addParticle(
+                    effect,
+                    posX + rand.nextDouble(),
+                    posY + rand.nextDouble(),
+                    posZ + 1.1,
+                    0.0, 0.0, 1.0
+                )
+        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(0, 0, -1), player)))
+            for (i in 0..10)
+                particleManager.addParticle(
+                    effect,
+                    posX + rand.nextDouble(),
+                    posY + rand.nextDouble(),
+                    posZ - 0.1,
+                    0.0, 0.0, -1.0
+                )
     }
 
     fun isUsingTool(player: ClientPlayerEntity): Boolean {
-        return Util.getRegistryName(player.mainHandStack) == Config["tool_item"]
+        return UtilCommon.getRegistryName(player.mainHandStack) == Config["tool_item"]
     }
 
     fun getTargetedPos(player: ClientPlayerEntity): BlockPos? {

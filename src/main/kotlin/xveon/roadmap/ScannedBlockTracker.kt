@@ -19,7 +19,7 @@ class ScannedBlockTracker(private val roadmap: Roadmap) {
 
     fun isPosScanned(pos: BlockPos): Boolean {
         for (scannedPos in scannedPositions)
-            if (Util.isPosNearOtherPos(pos, scannedPos))
+            if (UtilCommon.isPosNearOtherPos(pos, scannedPos))
                 return true
         return false
     }
@@ -44,7 +44,7 @@ class ScannedBlockTracker(private val roadmap: Roadmap) {
 
     fun isPosPending(pos: BlockPos): Boolean {
         for (pendingPos in pendingPositions)
-            if (Util.isPosNearOtherPos(pos, pendingPos))
+            if (UtilCommon.isPosNearOtherPos(pos, pendingPos))
                 return true
         return false
     }

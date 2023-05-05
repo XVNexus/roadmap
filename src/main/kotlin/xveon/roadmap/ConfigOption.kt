@@ -48,7 +48,7 @@ class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues:
                 ConfigType.DOUBLE -> value.toString()
                 ConfigType.STRING -> value as String
                 ConfigType.ENUM -> value.toString().lowercase().replace('_', ' ')
-                ConfigType.ID -> Util.compressRegistryName(value as String)
+                ConfigType.ID -> UtilCommon.compressRegistryName(value as String)
             }
         }
 
@@ -60,7 +60,7 @@ class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues:
                 ConfigType.DOUBLE -> trimmed.toDouble()
                 ConfigType.STRING -> trimmed
                 ConfigType.ENUM -> trimmed.uppercase().replace(' ', '_')
-                ConfigType.ID -> Util.expandRegistryName(trimmed)
+                ConfigType.ID -> UtilCommon.expandRegistryName(trimmed)
             }
         }
     }

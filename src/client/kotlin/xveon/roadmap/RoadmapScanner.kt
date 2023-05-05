@@ -30,6 +30,7 @@ class RoadmapScanner(val roadmap: Roadmap) {
 
             val nextScannedBlock = UtilClient.getFloorBlockAtPos(nextPendingPos, Pair(1, 1), player)
             if (nextScannedBlock == null) {
+                roadmap.setBlock(RoadmapBlock(nextPendingPos, 0, "_"))
                 roadmap.removeMarker(nextPendingPos, RoadmapMarkerType.CUTOFF_POINT)
                 tracker.markPosScanned(nextPendingPos)
                 continue

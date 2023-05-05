@@ -60,7 +60,7 @@ object UtilCommon {
     }
 
     fun expandRegistryName(name: String): String {
-        return if (!name.contains(':') && (name != "_"))
+        return if (!name.contains(':') && name != "_")
             "minecraft:$name"
         else
             name

@@ -17,7 +17,7 @@
 	"entrypoints": {
 		"main": [
 			{
-				"value": "xveon.roadmap.Roadmap",
+				"value": "xveon.roadmap.RoadmapCommon",
 				"adapter": "kotlin"
 			}
 		],

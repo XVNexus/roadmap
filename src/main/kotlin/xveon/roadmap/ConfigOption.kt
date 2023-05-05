@@ -5,7 +5,7 @@ import java.util.regex.Pattern
 class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues: MutableList<Any>? = null, val defaultValue: Any? = null) {
     var values = mutableListOf<Any>()
     var value: Any
-        get() = if (!isList and values.isNotEmpty()) values[0]
+        get() = if (!isList && values.isNotEmpty()) values[0]
         else throw IllegalArgumentException("Cannot get a single value from an array config field")
         set(value) = if (!isList) values = mutableListOf(value)
         else values.clear()

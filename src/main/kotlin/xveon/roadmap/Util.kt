@@ -42,7 +42,7 @@ object Util {
     }
 
     fun expandBlockName(name: String): String {
-        return if (!name.contains(':') and (name != "_"))
+        return if (!name.contains(':') && (name != "_"))
             "minecraft:$name"
         else
             name

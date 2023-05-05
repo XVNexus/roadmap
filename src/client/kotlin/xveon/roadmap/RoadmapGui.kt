@@ -60,10 +60,10 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         putSpacer(mediumHeight)
 
         putHeader("Other Controls")
-        putButton(maxWidth - shortWidth - spacing, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
+        putButton(maxWidth, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
         { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
-        putButton(shortWidth, mediumHeight, "Clear Data", "Delete all roadmap data for this world")
-        { button: ButtonWidget? -> RoadmapController.handleClearDataPress(button) }
+        // putButton(shortWidth, mediumHeight, "Clear Data", "Delete all roadmap data for this world")
+        // { button: ButtonWidget? -> RoadmapController.handleClearDataPress(button) }
     }
 
     override fun render(matrices: MatrixStack?, mouseX: Int, mouseY: Int, delta: Float) {

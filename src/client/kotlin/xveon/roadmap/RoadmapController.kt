@@ -31,7 +31,7 @@ object RoadmapController {
 
     fun handleClearDataPress(button: ButtonWidget?) {
         RoadmapClient.logger.info("GUI: Clear Data button pressed")
-        RoadmapClient.clearRoadmap(MinecraftClient.getInstance())
+        RoadmapClient.clearData(MinecraftClient.getInstance())
     }
 
     fun handleConfigToggle(label: String, configId: String) {

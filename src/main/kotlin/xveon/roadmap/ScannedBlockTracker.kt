@@ -3,7 +3,7 @@ package xveon.roadmap
 import net.minecraft.util.math.BlockPos
 import java.util.*
 
-class ScannedBlockTracker(private val roadmap: ScannedRoadmap) {
+class ScannedBlockTracker(private val roadmap: Roadmap) {
     private val scannedPositions = mutableListOf<BlockPos>()
     private val pendingPositions: Queue<BlockPos> = LinkedList()
 
@@ -38,7 +38,7 @@ class ScannedBlockTracker(private val roadmap: ScannedRoadmap) {
 
     fun enqueuePendingPositions(positions: Set<BlockPos>) {
         for (pos in positions)
-            if (!isPosScanned(pos) and !isPosPending(pos) and !roadmap.testMarker(pos, RoadmapMarkerType.SCAN_FENCE))
+            if (!isPosScanned(pos) && !isPosPending(pos) && !roadmap.testMarker(pos, RoadmapMarkerType.SCAN_FENCE))
                 pendingPositions.add(pos)
     }
 
@@ -50,8 +50,8 @@ class ScannedBlockTracker(private val roadmap: ScannedRoadmap) {
     }
 
     fun isPosNearOtherPos(pos: BlockPos, other: BlockPos): Boolean {
-        val xzEqual = (pos.x == other.x) and (pos.z == other.z)
-        val yWithinRange = (pos.y >= other.y - 1) and (pos.y <= other.y + 1)
-        return xzEqual and yWithinRange
+        val xzEqual = (pos.x == other.x) && (pos.z == other.z)
+        val yWithinRange = (pos.y >= other.y - 1) && (pos.y <= other.y + 1)
+        return xzEqual && yWithinRange
     }
 }

@@ -26,11 +26,11 @@ object RoadmapClient : ClientModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
     private lateinit var kbScan: KeyBinding
     private lateinit var kbUi: KeyBinding
-    private var roadmap = ScannedRoadmap()
+    private var roadmap = Roadmap()
     private var ui = RoadmapGui()
     private var masterTickCount = 0
     private var lastChunkPos = ChunkPos(0, 0)
-    private var surroundingChunks = setOf<ScannedChunk>()
+    private var surroundingChunks = setOf<RoadmapChunk>()
 
     override fun onInitializeClient() {
         // This entrypoint is suitable for setting up client-specific logic, such as rendering.
@@ -40,7 +40,7 @@ object RoadmapClient : ClientModInitializer {
         logger.info("Loaded config")
 
         if (FileSys.containsFiles(Constants.OUTPUT_PATH)) {
-            roadmap = ScannedRoadmap.readFiles()
+            roadmap = Roadmap.readFiles()
             logger.info("Loaded ${roadmap.getBlockCount()} road blocks and ${roadmap.markers.count()} markers")
         }
 
@@ -86,7 +86,7 @@ object RoadmapClient : ClientModInitializer {
         val rand = Random(masterTickCount)
 
         for (chunk in surroundingChunks) {
-            for (block in chunk.blocks.values) {
+            for (block in chunk.blocks.values) if (block.isRoad) {
                 val distFromPlayer = sqrt(block.pos.getSquaredDistance(player.pos))
                 if (rand.nextInt(distFromPlayer.toInt().coerceIn(1, 40)) != 0) continue
 
@@ -115,7 +115,7 @@ object RoadmapClient : ClientModInitializer {
             val posY = marker.pos.y.toDouble()
             val posZ = marker.pos.z.toDouble()
 
-            for (i in -markerHeight..markerHeight + 1) when (marker.type) {
+            for (i in -markerHeight..markerHeight) when (marker.type) {
                 RoadmapMarkerType.CUTOFF_POINT -> {
 
                     particleManager.addParticle(
@@ -185,14 +185,15 @@ object RoadmapClient : ClientModInitializer {
     fun undoLastScan(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
-        val undoSuccessful = false // roadmap.restoreState()
-        if (undoSuccessful) {
-            roadmap.writeFiles()
-            updateSurroundingChunks(client, true)
-            notifyPlayer("Last scan has been reverted.", player)
-        } else {
+        if (!roadmap.hasSavedState()) {
             notifyPlayer("No saved state to revert to!", player)
+            return
         }
+
+        roadmap.restoreState()
+        roadmap.writeFiles()
+        updateSurroundingChunks(client, true)
+        notifyPlayer("Last scan has been reverted.", player)
     }
 
     fun clearSurroundingChunks(client: MinecraftClient) {
@@ -234,19 +235,20 @@ object RoadmapClient : ClientModInitializer {
         val player: ClientPlayerEntity = client.player ?: return
 
         BlockStateCache.clearBlockStates()
-        roadmap = ScannedRoadmap.readFiles()
+        roadmap = Roadmap.readFiles()
         Config.reloadFile()
         notifyPlayer("Reloaded scan data and config.", player)
 
         updateSurroundingChunks(client, true)
     }
     
-    fun clearRoadmap(client: MinecraftClient) {
+    fun clearData(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
         BlockStateCache.clearBlockStates()
         roadmap.clearMarkers()
         roadmap.clearChunks()
+        roadmap.writeFiles()
         notifyPlayer("Cleared map data.", player)
 
         updateSurroundingChunks(client, true)

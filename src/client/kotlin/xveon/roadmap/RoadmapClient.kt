@@ -16,6 +16,7 @@ import net.minecraft.client.util.InputUtil
 import net.minecraft.particle.DustParticleEffect
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.text.Text
+import net.minecraft.world.RaycastContext
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
@@ -26,6 +27,7 @@ object RoadmapClient : ClientModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
     private lateinit var kbScan: KeyBinding
     private lateinit var kbUi: KeyBinding
+    private lateinit var kbFence: KeyBinding
     private var roadmap = Roadmap()
     private var ui = RoadmapGui()
     private var masterTickCount = 0
@@ -46,19 +48,29 @@ object RoadmapClient : ClientModInitializer {
 
         kbScan = KeyBindingHelper.registerKeyBinding(
             KeyBinding(
-                "key.roadmap.scan",  // The translation key of the keybinding's name
-                InputUtil.Type.KEYSYM,  // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
-                GLFW.GLFW_KEY_R,  // The keycode of the key
-                "category.roadmap.main" // The translation key of the keybinding's category.
+                "key.roadmap.scan",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_R,
+                "category.roadmap.main"
             )
         )
 
         kbUi = KeyBindingHelper.registerKeyBinding(
             KeyBinding(
-                "key.roadmap.ui",  // The translation key of the keybinding's name
-                InputUtil.Type.KEYSYM,  // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
-                GLFW.GLFW_KEY_G,  // The keycode of the key
-                "category.roadmap.main" // The translation key of the keybinding's category.
+                "key.roadmap.ui",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_G,
+                "category.roadmap.main"
+            )
+        )
+
+
+        kbFence = KeyBindingHelper.registerKeyBinding(
+            KeyBinding(
+                "key.roadmap.fence",
+                InputUtil.Type.MOUSE,
+                GLFW.GLFW_MOUSE_BUTTON_RIGHT,
+                "category.roadmap.main"
             )
         )
 
@@ -77,6 +89,7 @@ object RoadmapClient : ClientModInitializer {
             if (Config["draw_marker_particles"] as Boolean) drawMarkerParticles(client)
             while (kbScan.wasPressed()) scanSurroundingRoads(client)
             while (kbUi.wasPressed()) openUi(client)
+            while (kbFence.wasPressed()) toggleFence(client)
         })
     }
 
@@ -169,12 +182,25 @@ object RoadmapClient : ClientModInitializer {
         }
     }
 
+    fun toggleFence(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+
+        val raycast = player.world.raycast(RaycastContext(
+            player.pos,
+            player.rotationVector.multiply(10.0),
+            RaycastContext.ShapeType.COLLIDER,
+            RaycastContext.FluidHandling.NONE,
+            player
+        ))
+        notifyPlayer("${raycast.blockPos.x} ${raycast.blockPos.y} ${raycast.blockPos.z}", player)
+    }
+
     fun scanSurroundingRoads(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
+        roadmap.saveStateToUndoHistory()
         val scanner = RoadmapScanner(roadmap)
         scanner.scan(player)
-        // roadmap.saveState()
         roadmap.writeFiles()
 
         notifyPlayer("Scan completed.", player)
@@ -185,15 +211,29 @@ object RoadmapClient : ClientModInitializer {
     fun undoLastScan(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
-        if (!roadmap.hasSavedState()) {
-            notifyPlayer("No saved state to revert to!", player)
+        if (!roadmap.hasUndoHistory()) {
+            notifyPlayer("No undo history found.", player)
             return
         }
 
-        roadmap.restoreState()
-        roadmap.writeFiles()
+        roadmap.revertStateFromUndoHistory()
+        roadmap.writeFiles(true)
         updateSurroundingChunks(client, true)
         notifyPlayer("Last scan has been reverted.", player)
+    }
+
+    fun redoLastScan(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+
+        if (!roadmap.hasRedoHistory()) {
+            notifyPlayer("No redo history found.", player)
+            return
+        }
+
+        roadmap.restoreStateFromRedoHistory()
+        roadmap.writeFiles(true)
+        updateSurroundingChunks(client, true)
+        notifyPlayer("Last undone scan has been restored.", player)
     }
 
     fun clearSurroundingChunks(client: MinecraftClient) {

@@ -14,12 +14,17 @@ object RoadmapController {
         RoadmapClient.undoLastScan(MinecraftClient.getInstance())
     }
 
+    fun handleRedoScanPress(button: ButtonWidget?) {
+        RoadmapClient.logger.info("GUI: Redo Scan button pressed")
+        RoadmapClient.redoLastScan(MinecraftClient.getInstance())
+    }
+
     fun handleClearAreaPress(button: ButtonWidget?) {
         RoadmapClient.logger.info("GUI: Clear Area button pressed")
         RoadmapClient.clearSurroundingChunks(MinecraftClient.getInstance())
     }
 
-    fun handleFindUnscannedPress(button: ButtonWidget?) {
+    fun handleFindTailsPress(button: ButtonWidget?) {
         RoadmapClient.logger.info("GUI: Find Unscanned button pressed")
         RoadmapClient.findUnscannedRoads(MinecraftClient.getInstance())
     }

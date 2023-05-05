@@ -7,6 +7,7 @@ import net.minecraft.registry.Registries
 object Util {
     val markersFilenameRegex = Regex("^markers$")
     val chunkFilenameRegex = Regex("^chunk_(-?\\d+)_(-?\\d+)$")
+    val roadmapFilenameRegex = Regex("^(markers|chunk_(-?\\d+)_(-?\\d+))$")
 
     fun genMarkersFilename(): String {
         return "markers.${Constants.SCAN_FILE_EXTENSION}"

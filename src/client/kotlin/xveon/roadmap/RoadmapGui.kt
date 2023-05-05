@@ -18,9 +18,9 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
     private var centerY = 0
     private val spacing = 4
 
-    private val shortWidth = 80
-    private val mediumWidth = 120
-    private val longWidth = 160
+    private val shortWidth = 60
+    private val mediumWidth = 80
+    private val longWidth = 100
     private var maxWidth = sizeX - spacing * 2
 
     private val shortHeight = 12
@@ -35,14 +35,17 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         resetLayoutControlVars()
 
         putHeader("Roadmap Menu")
+        val remainingWidth = (maxWidth - shortWidth * 2 - spacing * 3) / 2
         putButton(maxWidth, tallHeight, "Scan", "Scan the surrounding area for road blocks")
         { button: ButtonWidget? -> RoadmapController.handleScanPress(button) }
         putButton(shortWidth, tallHeight, "Clear Area", "Clear the surrounding chunks of road data")
         { button: ButtonWidget? -> RoadmapController.handleClearAreaPress(button) }
-        putButton(maxWidth - shortWidth * 2 - spacing * 2, tallHeight, "Undo Scan", "Undo the last scan")
+        putButton(remainingWidth, tallHeight, "Undo Scan", "Undo the last scan")
         { button: ButtonWidget? -> RoadmapController.handleUndoScanPress(button) }
-        putButton(shortWidth, tallHeight, "Find Unscanned", "Locate road sections which have been partially scanned")
-        { button: ButtonWidget? -> RoadmapController.handleFindUnscannedPress(button) }
+        putButton(remainingWidth, tallHeight, "Redo Scan", "Redo the last undone scan")
+        { button: ButtonWidget? -> RoadmapController.handleRedoScanPress(button) }
+        putButton(shortWidth, tallHeight, "Find Tails", "Locate road sections which have been partially scanned")
+        { button: ButtonWidget? -> RoadmapController.handleFindTailsPress(button) }
 
         putSpacer(mediumHeight)
 
@@ -56,14 +59,20 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         putConfigField(maxWidth, mediumHeight, "Road Blocks", "Which blocks are recorded as roads", "road_blocks")
         putConfigField(maxWidth, mediumHeight, "Terrain Blocks", "Which blocks are recorded as terrain (scanner considers all solid blocks not mentioned here as terrain)", "terrain_blocks")
         putConfigField(maxWidth, mediumHeight, "Ignored Blocks", "Which blocks are ignored by the scanner (scanner ignores all transparent blocks not mentioned here)", "ignored_blocks")
+        putConfigField(maxWidth, mediumHeight, "Enable Clear Button", "Enable the clear all button (deletes all data associated with the current world, use with caution!)", "enable_clear_button")
 
         putSpacer(mediumHeight)
 
         putHeader("Other Controls")
-        putButton(maxWidth, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
-        { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
-        // putButton(shortWidth, mediumHeight, "Clear Data", "Delete all roadmap data for this world")
-        // { button: ButtonWidget? -> RoadmapController.handleClearDataPress(button) }
+        if (!(Config["enable_clear_button"] as Boolean)) {
+            putButton(maxWidth, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
+            { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
+        } else {
+            putButton(maxWidth - shortWidth - spacing, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
+            { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
+            putButton(shortWidth, mediumHeight, "Clear Data", "Delete all roadmap data for this world (USE WITH CAUTION!)")
+            { button: ButtonWidget? -> RoadmapController.handleClearDataPress(button) }
+        }
     }
 
     override fun render(matrices: MatrixStack?, mouseX: Int, mouseY: Int, delta: Float) {

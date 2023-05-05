@@ -7,38 +7,51 @@ class Roadmap(var name: String = "") {
     var markers = mutableListOf<RoadmapMarker>()
     var chunks = mutableMapOf<ChunkPos, RoadmapChunk>()
 
-    private var opStack = Stack<RoadmapOp>()
     private var chunkFilesToUpdate = mutableMapOf<ChunkPos, Boolean>()
     private var chunkFilesToRemove = mutableSetOf<ChunkPos>()
-    // Used internally to prevent the undo function itself from creating undo history while undoing stuff
-    private var saveUndoHistory = true
 
-    fun saveState() {
-        opStack.clear()
+    private var undoHistory = Stack<Roadmap>()
+    private var redoHistory = Stack<Roadmap>()
+
+    fun saveStateToUndoHistory() {
+        undoHistory.push(createClone())
+        redoHistory.clear()
     }
 
-    fun restoreState() {
-        saveUndoHistory = false
-        while (opStack.isNotEmpty()) {
-            val op = opStack.pop()
-            when (op.type) {
-                RoadmapOpType.ADD_CHUNK -> removeChunk(op.newChunk?.pos ?: continue)
-                RoadmapOpType.REMOVE_CHUNK -> addChunk(op.oldChunk ?: continue)
-                RoadmapOpType.EDIT_CHUNK -> setChunk(op.oldChunk ?: continue)
-                RoadmapOpType.ADD_MARKER -> removeMarker(op.newMarker ?: continue)
-                RoadmapOpType.REMOVE_MARKER -> addMarker(op.oldMarker ?: continue)
-            }
-        }
-        saveUndoHistory = true
+    fun revertStatesFromUndoHistory(steps: Int) {
+        for (i in 0 until steps)
+            if (!revertStateFromUndoHistory())
+                return
     }
 
-    fun hasSavedState(): Boolean {
-        return opStack.isNotEmpty()
+    fun revertStateFromUndoHistory(): Boolean {
+        if (undoHistory.isEmpty()) return false
+        val clone = undoHistory.pop()
+        redoHistory.push(clone)
+        restoreClone(clone)
+        return true
     }
 
-    fun recordOp(op: RoadmapOp) {
-        if (saveUndoHistory)
-            opStack.push(op)
+    fun reloadStatesFromRedoHistory(steps: Int) {
+        for (i in 0 until steps)
+            if (!restoreStateFromRedoHistory())
+                return
+    }
+
+    fun restoreStateFromRedoHistory(): Boolean {
+        if (redoHistory.isEmpty()) return false
+        val clone = redoHistory.pop()
+        undoHistory.push(clone)
+        restoreClone(clone)
+        return true
+    }
+
+    fun hasUndoHistory(): Boolean {
+        return undoHistory.isNotEmpty()
+    }
+
+    fun hasRedoHistory(): Boolean {
+        return redoHistory.isNotEmpty()
     }
 
     fun getMarkers(type: RoadmapMarkerType): MutableList<RoadmapMarker> {
@@ -54,30 +67,23 @@ class Roadmap(var name: String = "") {
     }
 
     fun addMarker(marker: RoadmapMarker) {
-        recordOp(RoadmapOp(RoadmapOpType.ADD_MARKER, newMarker = marker))
         markers.add(marker)
     }
 
-    fun removeMarker(pos: BlockPos, type: RoadmapMarkerType): Boolean {
-        return removeMarker(RoadmapMarker(pos, type))
+    fun removeMarker(pos: BlockPos, type: RoadmapMarkerType) {
+        removeMarker(RoadmapMarker(pos, type))
     }
 
-    fun removeMarker(marker: RoadmapMarker): Boolean {
-        for (i in 0 until markers.count()) {
+    fun removeMarker(marker: RoadmapMarker) {
+        for (i in markers.count() - 1 downTo 0) {
             val otherMarker = markers[i]
-            if (otherMarker.type == marker.type && otherMarker.testPos(marker.pos)) {
+            if (otherMarker.type == marker.type && otherMarker.testPos(marker.pos))
                 markers.removeAt(i)
-                recordOp(RoadmapOp(RoadmapOpType.REMOVE_MARKER, oldMarker = otherMarker))
-                return true
-            }
         }
-        return false
     }
 
     fun clearMarkers(): Boolean {
         if (markers.isEmpty()) return false
-        for (marker in markers)
-            recordOp(RoadmapOp(RoadmapOpType.REMOVE_MARKER, oldMarker = marker))
         markers.clear()
         return true
     }
@@ -116,13 +122,11 @@ class Roadmap(var name: String = "") {
         val chunkPos = ChunkPos.fromBlockPos(block.pos)
         if (containsChunk(chunkPos)) {
             val chunk = getChunk(chunkPos) ?: return
-            recordOp(RoadmapOp(RoadmapOpType.EDIT_CHUNK, oldChunk = chunk))
             chunk.setBlock(block)
             chunkFilesToUpdate[chunkPos] = true
         } else {
             val chunk = RoadmapChunk(chunkPos)
             chunk.addBlock(block)
-            recordOp(RoadmapOp(RoadmapOpType.ADD_CHUNK, newChunk = chunk))
             addChunk(chunk)
         }
     }
@@ -142,7 +146,6 @@ class Roadmap(var name: String = "") {
     fun removeBlock(pos: BlockPos): Boolean {
         val chunkPos = ChunkPos.fromBlockPos(pos)
         val chunk = getChunk(chunkPos) ?: return false
-        recordOp(RoadmapOp(RoadmapOpType.EDIT_CHUNK, oldChunk = chunk))
         val result = chunk.removeBlock(pos) ?: false
         chunkFilesToUpdate[chunkPos] = result
         if (result && chunk.blocks.isEmpty())
@@ -151,8 +154,6 @@ class Roadmap(var name: String = "") {
     }
 
     fun clearBlocks(): Boolean {
-        for (chunk in chunks.values)
-            recordOp(RoadmapOp(RoadmapOpType.REMOVE_CHUNK, oldChunk = chunk))
         return clearChunks()
     }
 
@@ -200,7 +201,6 @@ class Roadmap(var name: String = "") {
     }
 
     fun setChunk(chunk: RoadmapChunk) {
-        recordOp(RoadmapOp(RoadmapOpType.EDIT_CHUNK, oldChunk = chunk))
         chunks[chunk.pos] = chunk
         chunkFilesToUpdate[chunk.pos] = true
     }
@@ -219,8 +219,7 @@ class Roadmap(var name: String = "") {
 
     fun removeChunk(pos: ChunkPos): Boolean {
         if (!containsChunk(pos)) return false
-        val removedChunk = chunks.remove(pos)
-        recordOp(RoadmapOp(RoadmapOpType.REMOVE_CHUNK, oldChunk = removedChunk))
+        chunks.remove(pos)
         chunkFilesToUpdate.remove(pos)
         chunkFilesToRemove.add(pos)
         return true
@@ -228,10 +227,8 @@ class Roadmap(var name: String = "") {
 
     fun clearChunks(): Boolean {
         if (chunks.isEmpty()) return false
-        for (chunk in chunks.values) {
-            recordOp(RoadmapOp(RoadmapOpType.REMOVE_CHUNK, oldChunk = chunk))
+        for (chunk in chunks.values)
             chunkFilesToRemove.add(chunk.pos)
-        }
         chunks.clear()
         chunkFilesToUpdate.clear()
         return true
@@ -241,21 +238,51 @@ class Roadmap(var name: String = "") {
         return chunks.containsKey(pos)
     }
 
-    fun writeFiles() {
-        // Save chunk files
-        for (removalPos in chunkFilesToRemove) {
-            FileSys.removeFile(Constants.OUTPUT_PATH + Util.genChunkFilename(removalPos))
-        }
-        chunkFilesToRemove.clear()
-        for (updatePos in chunkFilesToUpdate.keys) if (chunkFilesToUpdate[updatePos] == true) {
-            val chunk = chunks[updatePos]
-            FileSys.writeFile(
-                Constants.OUTPUT_PATH + Util.genChunkFilename(chunk?.pos ?: ChunkPos(0, 0)),
-                chunk.toString()
-            )
-            chunkFilesToUpdate[updatePos] = false
+    fun createClone(): Roadmap {
+        val result = Roadmap(name)
+
+        for (marker in markers) {
+            val clonedPos = BlockPos(marker.pos.x, marker.pos.y, marker.pos.z)
+            result.addMarker(RoadmapMarker(clonedPos, marker.type))
         }
 
+        for (chunk in chunks.values) {
+            val clonedChunk = RoadmapChunk(ChunkPos(chunk.pos.x, chunk.pos.z))
+            for (block in chunk.blocks.values) {
+                val clonedPos = BlockPos(block.pos.x, block.pos.y, block.pos.z)
+                clonedChunk.addBlock(RoadmapBlock(clonedPos, block.clearance, block.name, block.isRoad))
+            }
+            result.addChunk(clonedChunk)
+        }
+
+        return result
+    }
+
+    fun restoreClone(clone: Roadmap) {
+        clearMarkers()
+        clearChunks()
+
+        for (clonedMarker in clone.markers) {
+            val pos = BlockPos(clonedMarker.pos.x, clonedMarker.pos.y, clonedMarker.pos.z)
+            addMarker(RoadmapMarker(pos, clonedMarker.type))
+        }
+
+        for (clonedChunk in clone.chunks.values) {
+            val chunk = RoadmapChunk(clonedChunk.pos)
+            for (clonedBlock in clonedChunk.blocks.values) {
+                val pos = BlockPos(clonedBlock.pos.x, clonedBlock.pos.y, clonedBlock.pos.z)
+                chunk.addBlock(RoadmapBlock(pos, clonedBlock.clearance, clonedBlock.name, clonedBlock.isRoad))
+            }
+            addChunk(chunk)
+        }
+    }
+
+    fun writeFiles(force: Boolean = false) {
+        if (!force) writeFilesOptimized()
+        else writeFilesForce()
+    }
+
+    private fun writeFilesOptimized() {
         // Save marker file
         var markerString = ""
         for (marker in markers)
@@ -267,16 +294,54 @@ class Roadmap(var name: String = "") {
             )
         else if (FileSys.containsFile(Constants.OUTPUT_PATH + Util.genMarkersFilename()))
             FileSys.removeFile(Constants.OUTPUT_PATH + Util.genMarkersFilename())
+
+        // Save chunk files
+        for (removalPos in chunkFilesToRemove)
+            FileSys.removeFile(Constants.OUTPUT_PATH + Util.genChunkFilename(removalPos))
+        chunkFilesToRemove.clear()
+        for (updatePos in chunkFilesToUpdate.keys) if (chunkFilesToUpdate[updatePos] == true) {
+            val chunk = chunks[updatePos]
+            FileSys.writeFile(
+                Constants.OUTPUT_PATH + Util.genChunkFilename(chunk?.pos ?: ChunkPos(0, 0)),
+                chunk.toString()
+            )
+            chunkFilesToUpdate[updatePos] = false
+        }
+    }
+
+    private fun writeFilesForce() {
+        // Remove all existing files
+        for (file in FileSys.listFiles(Constants.OUTPUT_PATH))
+            if (file.nameWithoutExtension.matches(Util.roadmapFilenameRegex))
+                FileSys.removeFile(file)
+
+        // Reset chunk update and removal trackers
+        chunkFilesToUpdate.clear()
+        chunkFilesToRemove.clear()
+
+        // Save marker file
+        var markerString = ""
+        for (marker in markers)
+            markerString += "\n$marker"
+        if (markerString.isNotEmpty())
+            FileSys.writeFile(
+                Constants.OUTPUT_PATH + Util.genMarkersFilename(),
+                markerString.substring(1)
+            )
+
+        // Save all chunk files
+        for (chunk in chunks.values) {
+            FileSys.writeFile(
+                Constants.OUTPUT_PATH + Util.genChunkFilename(chunk.pos),
+                chunk.toString()
+            )
+            chunkFilesToUpdate[chunk.pos] = false
+        }
     }
 
     companion object {
         fun readFiles(): Roadmap {
             val result = Roadmap()
-
-            // Load chunk files
-            for (file in FileSys.listFiles(Constants.OUTPUT_PATH))
-                if (file.nameWithoutExtension.matches(Util.chunkFilenameRegex))
-                    result.addChunk(RoadmapChunk.fromString(FileSys.readFile(file)))
 
             // Load marker file
             if (FileSys.containsFile(Constants.OUTPUT_PATH + Util.genMarkersFilename())) {
@@ -284,6 +349,11 @@ class Roadmap(var name: String = "") {
                 for (line in markerString.split('\n'))
                     result.addMarker(RoadmapMarker.fromString(line))
             }
+
+            // Load chunk files
+            for (file in FileSys.listFiles(Constants.OUTPUT_PATH))
+                if (file.nameWithoutExtension.matches(Util.chunkFilenameRegex))
+                    result.addChunk(RoadmapChunk.fromString(FileSys.readFile(file)))
 
             return result
         }

@@ -15,7 +15,8 @@ object Config {
         Pair("scan_everything", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false)),
         Pair("road_blocks", ConfigOption(ConfigType.BLOCK, true, defaultValues = mutableListOf("minecraft:dirt_path", "minecraft:gravel"))),
         Pair("terrain_blocks", ConfigOption(ConfigType.BLOCK, true, defaultValues = mutableListOf())),
-        Pair("ignored_blocks", ConfigOption(ConfigType.BLOCK, true, defaultValues = mutableListOf("minecraft:snow")))
+        Pair("ignored_blocks", ConfigOption(ConfigType.BLOCK, true, defaultValues = mutableListOf("minecraft:snow"))),
+        Pair("enable_clear_button", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false))
     )
     val gson = Gson()
 

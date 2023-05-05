@@ -6,8 +6,6 @@ import net.minecraft.util.math.BlockPos
 
 class RoadmapScanner(val roadmap: Roadmap) {
     fun scan(player: ClientPlayerEntity) {
-        roadmap.saveState()
-
         // Used to keep track of which blocks are scanned and store a queue of blocks waiting to be scanned
         val tracker = ScannedBlockTracker(roadmap)
 
@@ -40,7 +38,7 @@ class RoadmapScanner(val roadmap: Roadmap) {
 
             nextScannedBlock.clearance = getClearanceOfBlock(nextScannedBlock, Config["scan_height"] as Int, player)
             roadmap.setBlock(nextScannedBlock)
-            roadmap.removeMarker(nextScannedBlock.pos, RoadmapMarkerType.CUTOFF_POINT)
+            roadmap.removeMarker(nextPendingPos, RoadmapMarkerType.CUTOFF_POINT)
             tracker.markPosScanned(nextScannedBlock.pos)
             if (nextScannedBlock.isRoad)
                 tracker.enqueuePendingPositions(getAdjacentPositions(nextScannedBlock.pos))

@@ -5,12 +5,12 @@ import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.util.math.BlockPos
 
 class RoadmapScanner(val roadmap: Roadmap) {
-    fun scan(player: ClientPlayerEntity) {
+    fun scan(player: ClientPlayerEntity): Boolean {
         // Used to keep track of which blocks are scanned and store a queue of blocks waiting to be scanned
         val tracker = ScannedBlockTracker(roadmap)
 
-        val originBlock = getFloorBlockAtPos(player.blockPos, Pair(Config["scan_height"] as Int, 0), player) ?: return
-        if (!originBlock.isRoad) return
+        val originBlock = getFloorBlockAtPos(player.blockPos, Pair(Config["scan_height"] as Int, 0), player) ?: return false
+        if (!originBlock.isRoad) return false
 
         originBlock.clearance = getClearanceOfBlock(originBlock, Config["scan_height"] as Int, player)
         roadmap.setBlock(originBlock)
@@ -45,11 +45,12 @@ class RoadmapScanner(val roadmap: Roadmap) {
 
             if (i >= Constants.MAX_SCAN_ITERATIONS) {
                 RoadmapClient.logger.warn("Scan reached ${Constants.MAX_SCAN_ITERATIONS} iterations, stopping early.")
-                return
+                return true
             }
         }
 
         RoadmapClient.logger.info("Scan ran for ${i + 1} iterations.")
+        return true
     }
 
     fun getAdjacentPositions(pos: BlockPos): Set<BlockPos> {

@@ -75,16 +75,32 @@ class Roadmap(var name: String = "") {
         markers.add(marker)
     }
 
-    fun removeMarker(pos: BlockPos, type: RoadmapMarkerType) {
-        removeMarker(RoadmapMarker(pos, type))
+    fun removeMarker(pos: BlockPos, type: RoadmapMarkerType): Boolean {
+        return removeMarker(RoadmapMarker(pos, type))
     }
 
-    fun removeMarker(marker: RoadmapMarker) {
+    fun removeMarker(marker: RoadmapMarker): Boolean {
+        var result = false
         for (i in markers.count() - 1 downTo 0) {
             val otherMarker = markers[i]
-            if (otherMarker.type == marker.type && otherMarker.testPos(marker.pos))
+            if (otherMarker.type == marker.type && otherMarker.testPos(marker.pos)) {
                 markers.removeAt(i)
+                result = true
+            }
         }
+        return result
+    }
+
+    fun clearMarkers(type: RoadmapMarkerType): Boolean {
+        var result = false
+        for (i in markers.count() - 1 downTo 0) {
+            val otherMarker = markers[i]
+            if (otherMarker.type == type) {
+                markers.removeAt(i)
+                result = true
+            }
+        }
+        return result
     }
 
     fun clearMarkers(): Boolean {
@@ -100,6 +116,13 @@ class Roadmap(var name: String = "") {
     fun testMarker(marker: RoadmapMarker): Boolean {
         for (otherMarker in markers)
             if (otherMarker.type == marker.type && otherMarker.testPos(marker.pos))
+                return true
+        return false
+    }
+
+    fun containsMarkers(type: RoadmapMarkerType): Boolean {
+        for (marker in markers)
+            if (marker.type == type)
                 return true
         return false
     }

@@ -18,7 +18,6 @@ object Config {
         Pair("terrain_blocks", ConfigOption(ConfigType.ID, true, defaultValues = mutableListOf())),
         Pair("ignored_blocks", ConfigOption(ConfigType.ID, true, defaultValues = mutableListOf("minecraft:snow"))),
         Pair("undo_history_limit", ConfigOption(ConfigType.INT, false, defaultValue = 10)),
-        Pair("enable_clear_button", ConfigOption(ConfigType.BOOLEAN, false, defaultValue = false))
     )
     val gson = Gson()
 

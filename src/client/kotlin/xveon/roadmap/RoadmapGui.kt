@@ -61,20 +61,14 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         putConfigField(maxWidth, mediumHeight, "Terrain Blocks", "Which blocks are recorded as terrain (scanner considers all solid blocks not mentioned here as terrain)", "terrain_blocks")
         putConfigField(maxWidth, mediumHeight, "Ignored Blocks", "Which blocks are ignored by the scanner (scanner ignores all transparent blocks not mentioned here)", "ignored_blocks")
         putConfigField(maxWidth, mediumHeight, "Undo History Limit", "Maximum number of operations stored in undo history", "undo_history_limit")
-        putConfigField(maxWidth, mediumHeight, "Enable Clear Button", "Enable the clear all button (deletes all data associated with the current world, use with caution!)", "enable_clear_button")
 
         putSpacer(mediumHeight)
 
         putHeader("Other Controls")
-        if (!(Config["enable_clear_button"] as Boolean)) {
-            putButton(maxWidth, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
-            { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
-        } else {
-            putButton(maxWidth - shortWidth - spacing, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
-            { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
-            putButton(shortWidth, mediumHeight, "Clear Data", "Delete all roadmap data for this world (USE WITH CAUTION!)")
-            { button: ButtonWidget? -> RoadmapController.handleClearDataPress(button) }
-        }
+        putButton(maxWidth - shortWidth - spacing, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
+        { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
+        putButton(shortWidth, mediumHeight, "Clear Data", "Delete all roadmap data for this world (USE WITH CAUTION!)")
+        { button: ButtonWidget? -> RoadmapController.handleClearDataPress(button) }
     }
 
     override fun render(matrices: MatrixStack?, mouseX: Int, mouseY: Int, delta: Float) {

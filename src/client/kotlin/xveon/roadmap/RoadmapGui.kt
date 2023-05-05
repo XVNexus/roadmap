@@ -12,8 +12,8 @@ import net.minecraft.text.Text
 
 @Environment(EnvType.CLIENT)
 class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Manager")) {
-    private var sizeX = 360
-    private var sizeY = 360
+    private var sizeX = 400
+    private var sizeY = 400
     private var centerX = 0
     private var centerY = 0
     private val spacing = 4
@@ -40,10 +40,10 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         { button: ButtonWidget? -> RoadmapController.handleScanPress(button) }
         putButton(shortWidth, tallHeight, "Clear Area", "Clear the surrounding chunks of road data")
         { button: ButtonWidget? -> RoadmapController.handleClearAreaPress(button) }
-        putButton(remainingWidth, tallHeight, "Undo Scan", "Undo the last scan")
-        { button: ButtonWidget? -> RoadmapController.handleUndoScanPress(button) }
-        putButton(remainingWidth, tallHeight, "Redo Scan", "Redo the last undone scan")
-        { button: ButtonWidget? -> RoadmapController.handleRedoScanPress(button) }
+        putButton(remainingWidth, tallHeight, "Undo", "Undo the last operation")
+        { button: ButtonWidget? -> RoadmapController.handleUndoPress(button) }
+        putButton(remainingWidth, tallHeight, "Redo", "Redo the last operation")
+        { button: ButtonWidget? -> RoadmapController.handleRedoPress(button) }
         putButton(shortWidth, tallHeight, "Find Tails", "Locate road sections which have been partially scanned")
         { button: ButtonWidget? -> RoadmapController.handleFindTailsPress(button) }
 
@@ -59,6 +59,7 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         putConfigField(maxWidth, mediumHeight, "Road Blocks", "Which blocks are recorded as roads", "road_blocks")
         putConfigField(maxWidth, mediumHeight, "Terrain Blocks", "Which blocks are recorded as terrain (scanner considers all solid blocks not mentioned here as terrain)", "terrain_blocks")
         putConfigField(maxWidth, mediumHeight, "Ignored Blocks", "Which blocks are ignored by the scanner (scanner ignores all transparent blocks not mentioned here)", "ignored_blocks")
+        putConfigField(maxWidth, mediumHeight, "Undo History Limit", "Maximum number of operations stored in undo history", "undo_history_limit")
         putConfigField(maxWidth, mediumHeight, "Enable Clear Button", "Enable the clear all button (deletes all data associated with the current world, use with caution!)", "enable_clear_button")
 
         putSpacer(mediumHeight)
@@ -131,8 +132,8 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         val labelWidth = 120
         val buttonWidth = height
         val fieldWidth =
-            if ((type == ConfigType.INT) or (type == ConfigType.DOUBLE)) maxWidth - labelWidth - buttonWidth * 2 - spacing * 3
-            else maxWidth - labelWidth - spacing
+            if ((type == ConfigType.INT) or (type == ConfigType.DOUBLE)) width - labelWidth - buttonWidth * 2 - spacing * 3
+            else width - labelWidth - spacing
 
         val text = TextWidget(
             pointerX, pointerY, labelWidth, height,
@@ -142,6 +143,7 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         text.alignLeft()
         addDrawableChild(text)
 
+        // TODO: Add proper list fields
         when (Config.getOption(configId)?.type) {
         ConfigType.BOOLEAN -> {
 

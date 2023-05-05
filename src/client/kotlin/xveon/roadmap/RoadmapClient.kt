@@ -195,20 +195,7 @@ object RoadmapClient : ClientModInitializer {
         notifyPlayer("${raycast.blockPos.x} ${raycast.blockPos.y} ${raycast.blockPos.z}", player)
     }
 
-    fun scanSurroundingRoads(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
-
-        roadmap.saveStateToUndoHistory()
-        val scanner = RoadmapScanner(roadmap)
-        scanner.scan(player)
-        roadmap.writeFiles()
-
-        notifyPlayer("Scan completed.", player)
-
-        updateSurroundingChunks(client, true)
-    }
-
-    fun undoLastScan(client: MinecraftClient) {
+    fun undoOperation(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
         if (!roadmap.hasUndoHistory()) {
@@ -222,7 +209,7 @@ object RoadmapClient : ClientModInitializer {
         notifyPlayer("Last scan has been reverted.", player)
     }
 
-    fun redoLastScan(client: MinecraftClient) {
+    fun redoOperation(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
         if (!roadmap.hasRedoHistory()) {
@@ -236,9 +223,23 @@ object RoadmapClient : ClientModInitializer {
         notifyPlayer("Last undone scan has been restored.", player)
     }
 
+    fun scanSurroundingRoads(client: MinecraftClient) {
+        val player: ClientPlayerEntity = client.player ?: return
+
+        roadmap.saveStateToUndoHistory()
+        val scanner = RoadmapScanner(roadmap)
+        scanner.scan(player)
+        roadmap.writeFiles()
+
+        notifyPlayer("Scan completed.", player)
+
+        updateSurroundingChunks(client, true)
+    }
+
     fun clearSurroundingChunks(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
+        roadmap.saveStateToUndoHistory()
         val startChunkCount = roadmap.chunks.count()
         for (chunk in roadmap.getChunksInRadius(ChunkPos.fromBlockPos(player.blockPos), 1))
             roadmap.removeChunk(chunk.pos)
@@ -285,7 +286,7 @@ object RoadmapClient : ClientModInitializer {
     fun clearData(client: MinecraftClient) {
         val player: ClientPlayerEntity = client.player ?: return
 
-        BlockStateCache.clearBlockStates()
+        roadmap.saveStateToUndoHistory()
         roadmap.clearMarkers()
         roadmap.clearChunks()
         roadmap.writeFiles()
@@ -295,8 +296,6 @@ object RoadmapClient : ClientModInitializer {
     }
 
     fun openUi(client: MinecraftClient) {
-        val player: ClientPlayerEntity = client.player ?: return
-
         client.setScreenAndRender(ui)
     }
 

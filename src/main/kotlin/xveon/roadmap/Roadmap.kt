@@ -26,9 +26,8 @@ class Roadmap(var name: String = "") {
 
     fun revertStateFromUndoHistory(): Boolean {
         if (undoHistory.isEmpty()) return false
-        val clone = undoHistory.pop()
-        redoHistory.push(clone)
-        restoreClone(clone)
+        redoHistory.push(createClone())
+        restoreClone(undoHistory.pop())
         return true
     }
 
@@ -40,9 +39,8 @@ class Roadmap(var name: String = "") {
 
     fun restoreStateFromRedoHistory(): Boolean {
         if (redoHistory.isEmpty()) return false
-        val clone = redoHistory.pop()
-        undoHistory.push(clone)
-        restoreClone(clone)
+        undoHistory.push(createClone())
+        restoreClone(redoHistory.pop())
         return true
     }
 
@@ -52,6 +50,11 @@ class Roadmap(var name: String = "") {
 
     fun hasRedoHistory(): Boolean {
         return redoHistory.isNotEmpty()
+    }
+
+    fun clearUndoRedoHistory() {
+        undoHistory.clear()
+        redoHistory.clear()
     }
 
     fun getMarkers(type: RoadmapMarkerType): MutableList<RoadmapMarker> {

@@ -1,7 +1,9 @@
-package xveon.roadmap
+package xveon.roadmap.ui
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.widget.ButtonWidget
+import xveon.roadmap.core.RoadmapClient
+import xveon.roadmap.storage.Config
 
 object RoadmapController {
     fun handleScanPress(button: ButtonWidget?) {
@@ -27,6 +29,11 @@ object RoadmapController {
     fun handleFindTailsPress(button: ButtonWidget?) {
         RoadmapClient.logger.info("GUI: Find Unscanned button pressed")
         RoadmapClient.findUnscannedRoads(MinecraftClient.getInstance())
+    }
+
+    fun handleOptimizeMapPress(button: ButtonWidget?) {
+        RoadmapClient.logger.info("GUI: Optimize Map button pressed")
+        RoadmapClient.optimizeRoadmapData(MinecraftClient.getInstance())
     }
 
     fun handleReloadDataPress(button: ButtonWidget?) {

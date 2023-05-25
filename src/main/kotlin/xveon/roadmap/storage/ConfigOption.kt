@@ -1,4 +1,6 @@
-package xveon.roadmap
+package xveon.roadmap.storage
+
+import xveon.roadmap.util.UtilMain
 
 class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues: MutableList<Any>? = null, val defaultValue: Any? = null) {
     var values = mutableListOf<Any>()
@@ -48,7 +50,7 @@ class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues:
                 ConfigType.DOUBLE -> value.toString()
                 ConfigType.STRING -> value as String
                 ConfigType.ENUM -> value.toString().lowercase().replace('_', ' ')
-                ConfigType.ID -> UtilCommon.compressRegistryName(value as String)
+                ConfigType.ID -> UtilMain.compressRegistryName(value as String)
             }
         }
 
@@ -60,7 +62,7 @@ class ConfigOption(val type: ConfigType, val isList: Boolean, val defaultValues:
                 ConfigType.DOUBLE -> trimmed.toDouble()
                 ConfigType.STRING -> trimmed
                 ConfigType.ENUM -> trimmed.uppercase().replace(' ', '_')
-                ConfigType.ID -> UtilCommon.expandRegistryName(trimmed)
+                ConfigType.ID -> UtilMain.expandRegistryName(trimmed)
             }
         }
     }

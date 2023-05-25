@@ -1,6 +1,9 @@
-package xveon.roadmap
+package xveon.roadmap.core
 
 import net.minecraft.util.math.BlockPos
+import xveon.roadmap.storage.Config
+import xveon.roadmap.storage.Constants
+import xveon.roadmap.util.UtilMain
 import java.io.IOException
 
 data class RoadmapBlock(var pos: BlockPos, var clearance: Int, var name: String, var isRoad: Boolean = false) {
@@ -9,7 +12,7 @@ data class RoadmapBlock(var pos: BlockPos, var clearance: Int, var name: String,
         set(value) { isRoad = !value }
 
     override fun toString(): String {
-        return "${pos.x} ${pos.y} ${pos.z} $clearance ${UtilCommon.compressRegistryName(name)} ${if (isRoad) Constants.ROAD_TAG else Constants.TERRAIN_TAG}"
+        return "${pos.x} ${pos.y} ${pos.z} $clearance ${UtilMain.compressRegistryName(name)} ${if (isRoad) Constants.ROAD_TAG else Constants.TERRAIN_TAG}"
     }
 
     companion object {
@@ -18,7 +21,7 @@ data class RoadmapBlock(var pos: BlockPos, var clearance: Int, var name: String,
             if (substrings.count() != 6) throw IOException("Roadmap block data is not formatted properly!")
             val parsedPos = BlockPos(substrings[0].toInt(), substrings[1].toInt(), substrings[2].toInt())
             val parsedClearance = substrings[3].toInt()
-            val parsedName = UtilCommon.expandRegistryName(substrings[4])
+            val parsedName = UtilMain.expandRegistryName(substrings[4])
             val parsedIsRoad = substrings[5] == Constants.ROAD_TAG
             return RoadmapBlock(parsedPos, parsedClearance, parsedName, parsedIsRoad)
         }

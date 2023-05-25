@@ -1,8 +1,11 @@
-package xveon.roadmap
+package xveon.roadmap.util
 
 import net.minecraft.block.BlockState
 import net.minecraft.client.network.ClientPlayerEntity
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec3d
+import xveon.roadmap.core.RoadmapBlock
+import xveon.roadmap.storage.BlockStateCache
 
 object UtilClient {
     fun getBlockState(pos: BlockPos, player: ClientPlayerEntity): BlockState {
@@ -18,8 +21,8 @@ object UtilClient {
             val testBlock = getBlockState(testPos, player)
             val blockAbove = getBlockState(testPos.add(BlockPos(0, 1, 0)), player)
 
-            if (UtilCommon.isBlockSolid(testBlock) && !UtilCommon.isBlockSolid(blockAbove))
-                return RoadmapBlock.detect(testPos, 0, UtilCommon.getRegistryName(testBlock))
+            if (UtilMain.isBlockSolid(testBlock) && !UtilMain.isBlockSolid(blockAbove))
+                return RoadmapBlock.detect(testPos, 0, UtilMain.getRegistryName(testBlock))
         }
         return null
     }
@@ -30,8 +33,8 @@ object UtilClient {
             val testBlock = getBlockState(testPos, player)
             val blockBelow = getBlockState(testPos.subtract(BlockPos(0, 1, 0)), player)
 
-            if (UtilCommon.isBlockSolid(testBlock) && !UtilCommon.isBlockSolid(blockBelow))
-                return RoadmapBlock.detect(testPos, 0, UtilCommon.getRegistryName(testBlock))
+            if (UtilMain.isBlockSolid(testBlock) && !UtilMain.isBlockSolid(blockBelow))
+                return RoadmapBlock.detect(testPos, 0, UtilMain.getRegistryName(testBlock))
         }
         return null
     }
@@ -42,18 +45,5 @@ object UtilClient {
             ceiling.pos.y - block.pos.y - 1
         else
             0
-    }
-
-    fun getAdjacentPositions(pos: BlockPos): Set<BlockPos> {
-        return setOf(
-            pos.add(0, 0, -1), // North
-            pos.add(1, 0, 0), // East
-            pos.add(0, 0, 1), // South
-            pos.add(-1, 0, 0), // West
-        )
-    }
-
-    fun isPosInRange(pos: BlockPos, range: Double, player: ClientPlayerEntity): Boolean {
-        return pos.isWithinDistance(player.pos, range)
     }
 }

@@ -1,6 +1,8 @@
-package xveon.roadmap
+package xveon.roadmap.util
 
 import net.minecraft.util.math.BlockPos
+import xveon.roadmap.core.Roadmap
+import xveon.roadmap.core.RoadmapMarkerType
 import java.util.*
 
 class ScannedBlockTracker(private val roadmap: Roadmap) {
@@ -19,7 +21,7 @@ class ScannedBlockTracker(private val roadmap: Roadmap) {
 
     fun isPosScanned(pos: BlockPos): Boolean {
         for (scannedPos in scannedPositions)
-            if (UtilCommon.isPosNearOtherPos(pos, scannedPos))
+            if (UtilMain.isInRange(pos, scannedPos))
                 return true
         return false
     }
@@ -44,7 +46,7 @@ class ScannedBlockTracker(private val roadmap: Roadmap) {
 
     fun isPosPending(pos: BlockPos): Boolean {
         for (pendingPos in pendingPositions)
-            if (UtilCommon.isPosNearOtherPos(pos, pendingPos))
+            if (UtilMain.isInRange(pos, pendingPos))
                 return true
         return false
     }

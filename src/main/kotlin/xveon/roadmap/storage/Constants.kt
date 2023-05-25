@@ -1,4 +1,4 @@
-package xveon.roadmap
+package xveon.roadmap.storage
 
 object Constants {
     const val CONFIG_PATH = "config/roadmap.json"

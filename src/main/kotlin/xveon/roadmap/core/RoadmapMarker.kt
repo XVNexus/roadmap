@@ -1,11 +1,13 @@
-package xveon.roadmap
+package xveon.roadmap.core
 
 import net.minecraft.util.math.BlockPos
+import xveon.roadmap.storage.Constants
+import xveon.roadmap.util.UtilMain
 import java.io.IOException
 
 data class RoadmapMarker(var pos: BlockPos, var type: RoadmapMarkerType) {
     fun testPos(pos: BlockPos): Boolean {
-        return UtilCommon.isPosNearOtherPos(pos, this.pos, Constants.MARKER_HEIGHT)
+        return UtilMain.isInRange(pos, this.pos, Constants.MARKER_HEIGHT)
     }
 
     override fun toString(): String {

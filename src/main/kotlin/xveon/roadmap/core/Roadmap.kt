@@ -1,11 +1,19 @@
-package xveon.roadmap
+package xveon.roadmap.core
 
 import net.minecraft.util.math.BlockPos
+import org.apache.commons.lang3.tuple.MutablePair
+import xveon.roadmap.util.ChunkPos
+import xveon.roadmap.storage.Config
+import xveon.roadmap.storage.Constants
+import xveon.roadmap.storage.FileSys
+import xveon.roadmap.util.UtilMain
+import xveon.roadmap.util.UtilMain.getAdjPositions
 import java.util.Stack
 
 class Roadmap(var name: String = "") {
     var markers = mutableListOf<RoadmapMarker>()
     var chunks = mutableMapOf<ChunkPos, RoadmapChunk>()
+    var bounds = MutablePair(ChunkPos(0, 0), ChunkPos(0, 0))
 
     private var chunkFilesToUpdate = mutableMapOf<ChunkPos, Boolean>()
     private var chunkFilesToRemove = mutableSetOf<ChunkPos>()
@@ -57,6 +65,18 @@ class Roadmap(var name: String = "") {
     fun clearUndoRedoHistory() {
         undoHistory.clear()
         redoHistory.clear()
+    }
+
+    // TODO: Complete this function
+    fun cleanRoads() {
+        for (block in getAllBlocks().values) {
+            val pos = block.pos
+            val adjPositions = pos.getAdjPositions()
+            val adjRoads = mutableMapOf<Int, Boolean>()
+            for (adjPos in adjPositions) {
+                val adjBlock = getBlock(adjPos)
+            }
+        }
     }
 
     fun getMarkers(type: RoadmapMarkerType): MutableList<RoadmapMarker> {
@@ -229,6 +249,12 @@ class Roadmap(var name: String = "") {
     }
 
     fun setChunk(chunk: RoadmapChunk) {
+        if (chunks.isNotEmpty()) {
+            // TODO: Optimize this bounds calculation
+            calculateBounds()
+        } else {
+            bounds = MutablePair(chunk.pos, chunk.pos)
+        }
         chunks[chunk.pos] = chunk
         chunkFilesToUpdate[chunk.pos] = true
     }
@@ -248,6 +274,12 @@ class Roadmap(var name: String = "") {
     fun removeChunk(pos: ChunkPos): Boolean {
         if (!containsChunk(pos)) return false
         chunks.remove(pos)
+        if (chunks.isNotEmpty()) {
+            // TODO: Optimize this bounds calculation
+            calculateBounds()
+        } else {
+            bounds = MutablePair(ChunkPos(0, 0), ChunkPos(0, 0))
+        }
         chunkFilesToUpdate.remove(pos)
         chunkFilesToRemove.add(pos)
         return true
@@ -258,12 +290,32 @@ class Roadmap(var name: String = "") {
         for (chunk in chunks.values)
             chunkFilesToRemove.add(chunk.pos)
         chunks.clear()
+        bounds = MutablePair(ChunkPos(0, 0), ChunkPos(0, 0))
         chunkFilesToUpdate.clear()
         return true
     }
 
     fun containsChunk(pos: ChunkPos): Boolean {
         return chunks.containsKey(pos)
+    }
+
+    fun calculateBounds() {
+        var minX = Int.MAX_VALUE
+        var minZ = Int.MAX_VALUE
+        var maxX = Int.MIN_VALUE
+        var maxZ = Int.MIN_VALUE
+        for (chunk in chunks.values) {
+            val pos = chunk.pos
+            if (pos.x < minX)
+                minX = pos.x
+            if (pos.z < minZ)
+                minZ = pos.z
+            if (pos.x > maxX)
+                maxX = pos.x
+            if (pos.z > maxZ)
+                maxZ = pos.z
+        }
+        bounds = MutablePair(ChunkPos(minX, minZ), ChunkPos(maxX, maxZ))
     }
 
     fun createClone(): Roadmap {
@@ -317,20 +369,20 @@ class Roadmap(var name: String = "") {
             markerString += "\n$marker"
         if (markerString.isNotEmpty())
             FileSys.writeFile(
-                Constants.OUTPUT_PATH + UtilCommon.genMarkersFilename(),
+                Constants.OUTPUT_PATH + UtilMain.genMarkersFilename(),
                 markerString.substring(1)
             )
-        else if (FileSys.containsFile(Constants.OUTPUT_PATH + UtilCommon.genMarkersFilename()))
-            FileSys.removeFile(Constants.OUTPUT_PATH + UtilCommon.genMarkersFilename())
+        else if (FileSys.containsFile(Constants.OUTPUT_PATH + UtilMain.genMarkersFilename()))
+            FileSys.removeFile(Constants.OUTPUT_PATH + UtilMain.genMarkersFilename())
 
         // Save chunk files
         for (removalPos in chunkFilesToRemove)
-            FileSys.removeFile(Constants.OUTPUT_PATH + UtilCommon.genChunkFilename(removalPos))
+            FileSys.removeFile(Constants.OUTPUT_PATH + UtilMain.genChunkFilename(removalPos))
         chunkFilesToRemove.clear()
         for (updatePos in chunkFilesToUpdate.keys) if (chunkFilesToUpdate[updatePos] == true) {
             val chunk = chunks[updatePos]
             FileSys.writeFile(
-                Constants.OUTPUT_PATH + UtilCommon.genChunkFilename(chunk?.pos ?: ChunkPos(0, 0)),
+                Constants.OUTPUT_PATH + UtilMain.genChunkFilename(chunk?.pos ?: ChunkPos(0, 0)),
                 chunk.toString()
             )
             chunkFilesToUpdate[updatePos] = false
@@ -340,7 +392,7 @@ class Roadmap(var name: String = "") {
     private fun writeFilesForce() {
         // Remove all existing files
         for (file in FileSys.listFiles(Constants.OUTPUT_PATH))
-            if (file.nameWithoutExtension.matches(UtilCommon.roadmapFilenameRegex))
+            if (file.nameWithoutExtension.matches(UtilMain.roadmapFilenameRegex))
                 FileSys.removeFile(file)
 
         // Reset chunk update and removal trackers
@@ -353,14 +405,14 @@ class Roadmap(var name: String = "") {
             markerString += "\n$marker"
         if (markerString.isNotEmpty())
             FileSys.writeFile(
-                Constants.OUTPUT_PATH + UtilCommon.genMarkersFilename(),
+                Constants.OUTPUT_PATH + UtilMain.genMarkersFilename(),
                 markerString.substring(1)
             )
 
         // Save all chunk files
         for (chunk in chunks.values) {
             FileSys.writeFile(
-                Constants.OUTPUT_PATH + UtilCommon.genChunkFilename(chunk.pos),
+                Constants.OUTPUT_PATH + UtilMain.genChunkFilename(chunk.pos),
                 chunk.toString()
             )
             chunkFilesToUpdate[chunk.pos] = false
@@ -372,15 +424,15 @@ class Roadmap(var name: String = "") {
             val result = Roadmap()
 
             // Load marker file
-            if (FileSys.containsFile(Constants.OUTPUT_PATH + UtilCommon.genMarkersFilename())) {
-                val markerString = FileSys.readFile(Constants.OUTPUT_PATH + UtilCommon.genMarkersFilename())
+            if (FileSys.containsFile(Constants.OUTPUT_PATH + UtilMain.genMarkersFilename())) {
+                val markerString = FileSys.readFile(Constants.OUTPUT_PATH + UtilMain.genMarkersFilename())
                 for (line in markerString.split('\n'))
                     result.addMarker(RoadmapMarker.fromString(line))
             }
 
             // Load chunk files
             for (file in FileSys.listFiles(Constants.OUTPUT_PATH))
-                if (file.nameWithoutExtension.matches(UtilCommon.chunkFilenameRegex))
+                if (file.nameWithoutExtension.matches(UtilMain.chunkFilenameRegex))
                     result.addChunk(RoadmapChunk.fromString(FileSys.readFile(file)))
 
             return result

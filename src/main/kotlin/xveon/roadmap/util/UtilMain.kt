@@ -1,4 +1,4 @@
-package xveon.roadmap
+package xveon.roadmap.util
 
 import net.minecraft.block.Block
 import net.minecraft.block.BlockState
@@ -6,15 +6,31 @@ import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraft.registry.Registries
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec3d
+import xveon.roadmap.storage.Config
+import xveon.roadmap.storage.Constants
 
-object UtilCommon {
+object UtilMain {
     val markersFilenameRegex = Regex("^markers$")
     val chunkFilenameRegex = Regex("^chunk_(-?\\d+)_(-?\\d+)$")
     val roadmapFilenameRegex = Regex("^(markers|chunk_(-?\\d+)_(-?\\d+))$")
 
-    fun isPosNearOtherPos(pos: BlockPos, other: BlockPos, rangeY: Int = 1): Boolean {
-        val xzEqual = pos.x == other.x && pos.z == other.z
-        val yWithinRange = pos.y >= other.y - rangeY && pos.y <= other.y + rangeY
+    fun BlockPos.getAdjPositions(): Set<BlockPos> {
+        return setOf(
+            this.add(0, 0, -1), // North
+            this.add(1, 0, 0), // East
+            this.add(0, 0, 1), // South
+            this.add(-1, 0, 0), // West
+        )
+    }
+
+    fun BlockPos.isInRange(other: Vec3d, range: Double): Boolean {
+        return this.isWithinDistance(other, range)
+    }
+
+    fun BlockPos.isInRange(other: BlockPos, rangeY: Int = 1): Boolean {
+        val xzEqual = this.x == other.x && this.z == other.z
+        val yWithinRange = this.y >= other.y - rangeY && this.y <= other.y + rangeY
         return xzEqual && yWithinRange
     }
 
@@ -27,7 +43,7 @@ object UtilCommon {
     }
 
     fun isBlockSolid(block: BlockState): Boolean {
-        val name = UtilCommon.getRegistryName(block)
+        val name = getRegistryName(block)
         return if ((Config["terrain_blocks"] as MutableList<String>).contains(name))
             true
         else if ((Config["ignored_blocks"] as MutableList<String>).contains(name))

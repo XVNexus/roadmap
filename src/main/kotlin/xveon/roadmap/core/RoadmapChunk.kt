@@ -1,6 +1,7 @@
-package xveon.roadmap
+package xveon.roadmap.core
 
 import net.minecraft.util.math.BlockPos
+import xveon.roadmap.util.ChunkPos
 
 data class RoadmapChunk(var pos: ChunkPos) {
     var blocks = mutableMapOf<BlockPos, RoadmapBlock>()

@@ -1,6 +1,12 @@
-package xveon.roadmap
+package xveon.roadmap.core
 
 import net.minecraft.client.network.ClientPlayerEntity
+import xveon.roadmap.storage.Config
+import xveon.roadmap.storage.Constants
+import xveon.roadmap.util.ScannedBlockTracker
+import xveon.roadmap.util.UtilClient
+import xveon.roadmap.util.UtilMain.getAdjPositions
+import xveon.roadmap.util.UtilMain.isInRange
 
 class RoadmapScanner(val roadmap: Roadmap) {
     fun scan(player: ClientPlayerEntity): Boolean {
@@ -14,14 +20,14 @@ class RoadmapScanner(val roadmap: Roadmap) {
         roadmap.setBlock(originBlock)
         roadmap.removeMarker(originBlock.pos, RoadmapMarkerType.CUTOFF_POINT)
         tracker.markPosScanned(originBlock.pos)
-        tracker.enqueuePendingPositions(UtilClient.getAdjacentPositions(originBlock.pos))
+        tracker.enqueuePendingPositions(originBlock.pos.getAdjPositions())
 
         var i = 0
         while (tracker.hasPendingPositions()) {
             i++
 
             val nextPendingPos = tracker.dequeuePendingPos()
-            if (!UtilClient.isPosInRange(nextPendingPos, Config["scan_radius"] as Double, player)) {
+            if (!nextPendingPos.isInRange(player.pos, Config["scan_radius"] as Double)) {
                 if (!roadmap.containsBlock(nextPendingPos, Constants.MARKER_HEIGHT))
                     roadmap.addMarker(nextPendingPos, RoadmapMarkerType.CUTOFF_POINT)
                 tracker.markPosScanned(nextPendingPos)
@@ -41,7 +47,7 @@ class RoadmapScanner(val roadmap: Roadmap) {
             roadmap.removeMarker(nextPendingPos, RoadmapMarkerType.CUTOFF_POINT)
             tracker.markPosScanned(nextScannedBlock.pos)
             if (nextScannedBlock.isRoad)
-                tracker.enqueuePendingPositions(UtilClient.getAdjacentPositions(nextScannedBlock.pos))
+                tracker.enqueuePendingPositions(nextScannedBlock.pos.getAdjPositions())
 
             if (i >= Constants.MAX_SCAN_ITERATIONS) {
                 RoadmapClient.logger.warn("Scan reached ${Constants.MAX_SCAN_ITERATIONS} iterations, stopping early.")

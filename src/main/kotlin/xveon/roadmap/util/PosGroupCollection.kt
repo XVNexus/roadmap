@@ -1,8 +1,6 @@
-package xveon.roadmap
+package xveon.roadmap.util
 
 import net.minecraft.util.math.BlockPos
-import org.joml.Vector3d
-import kotlin.math.roundToInt
 
 class PosGroupCollection(var mergeRange: Int) {
     private val groups = mutableSetOf<PosGroup>()

@@ -1,9 +1,9 @@
-package xveon.roadmap
+package xveon.roadmap.core
 
 import net.fabricmc.api.ModInitializer
 import org.slf4j.LoggerFactory
 
-object RoadmapCommon : ModInitializer {
+object RoadmapMain : ModInitializer {
     val logger = LoggerFactory.getLogger("roadmap")
 
     override fun onInitialize() {

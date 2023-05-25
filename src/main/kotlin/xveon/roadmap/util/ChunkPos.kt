@@ -1,6 +1,7 @@
-package xveon.roadmap
+package xveon.roadmap.util
 
 import net.minecraft.util.math.BlockPos
+import xveon.roadmap.storage.Constants
 
 data class ChunkPos(var x: Int, var z: Int) {
     fun toBlockPos(): BlockPos {

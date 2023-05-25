@@ -1,4 +1,4 @@
-package xveon.roadmap
+package xveon.roadmap.ui
 
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
@@ -9,6 +9,8 @@ import net.minecraft.client.gui.widget.*
 import net.minecraft.client.gui.widget.ButtonWidget.PressAction
 import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.text.Text
+import xveon.roadmap.storage.Config
+import xveon.roadmap.storage.ConfigType
 
 @Environment(EnvType.CLIENT)
 class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Manager")) {
@@ -46,6 +48,8 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         { button: ButtonWidget? -> RoadmapController.handleRedoPress(button) }
         putButton(shortWidth, tallHeight, "Find Tails", "Locate road sections which have been partially scanned")
         { button: ButtonWidget? -> RoadmapController.handleFindTailsPress(button) }
+        putButton(maxWidth, tallHeight, "Optimize Map", "Clean up roadmap data and prepare it for pathfinding")
+        { button: ButtonWidget? -> RoadmapController.handleOptimizeMapPress(button) }
 
         putSpacer(mediumHeight)
 
@@ -65,9 +69,9 @@ class RoadmapGui(val parent: Screen? = null) : Screen(Text.literal("Roadmap Mana
         putSpacer(mediumHeight)
 
         putHeader("Other Controls")
-        putButton(maxWidth - shortWidth - spacing, mediumHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
+        putButton(maxWidth - shortWidth - spacing, tallHeight, "Reload Data", "Load the config and scan data from saved files and clear the cache")
         { button: ButtonWidget? -> RoadmapController.handleReloadDataPress(button) }
-        putButton(shortWidth, mediumHeight, "Clear Data", "Delete all roadmap data for this world (USE WITH CAUTION!)")
+        putButton(shortWidth, tallHeight, "Clear Data", "Delete all roadmap data for this world (USE WITH CAUTION!)")
         { button: ButtonWidget? -> RoadmapController.handleClearDataPress(button) }
     }
 

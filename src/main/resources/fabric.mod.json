@@ -17,13 +17,13 @@
 	"entrypoints": {
 		"main": [
 			{
-				"value": "xveon.roadmap.RoadmapCommon",
+				"value": "xveon.roadmap.core.RoadmapMain",
 				"adapter": "kotlin"
 			}
 		],
 		"client": [
 			{
-				"value": "xveon.roadmap.RoadmapClient",
+				"value": "xveon.roadmap.core.RoadmapClient",
 				"adapter": "kotlin"
 			}
 		]

@@ -1,4 +1,4 @@
-package xveon.roadmap
+package xveon.roadmap.core
 
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
@@ -22,6 +22,15 @@ import net.minecraft.world.RaycastContext
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.slf4j.LoggerFactory
+import xveon.roadmap.ui.RoadmapGui
+import xveon.roadmap.storage.BlockStateCache
+import xveon.roadmap.storage.Config
+import xveon.roadmap.storage.Constants
+import xveon.roadmap.storage.FileSys
+import xveon.roadmap.util.ChunkPos
+import xveon.roadmap.util.PosGroupCollection
+import xveon.roadmap.util.UtilClient
+import xveon.roadmap.util.UtilMain
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -189,7 +198,7 @@ object RoadmapClient : ClientModInitializer {
 
         // TODO: Deshiddify this code
         val effect = DustParticleEffect(color, 2.0F)
-        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(1, 0, 0), player)))
+        if (!UtilMain.isBlockSolid(UtilClient.getBlockState(pos.add(1, 0, 0), player)))
             for (i in 0..10)
                 particleManager.addParticle(
                     effect,
@@ -198,7 +207,7 @@ object RoadmapClient : ClientModInitializer {
                     posZ + rand.nextDouble(),
                     1.0, 0.0, 0.0
                 )
-        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(-1, 0, 0), player)))
+        if (!UtilMain.isBlockSolid(UtilClient.getBlockState(pos.add(-1, 0, 0), player)))
             for (i in 0..10)
                 particleManager.addParticle(
                     effect,
@@ -207,7 +216,7 @@ object RoadmapClient : ClientModInitializer {
                     posZ + rand.nextDouble(),
                     -1.0, 0.0, 0.0
                 )
-        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(0, 1, 0), player)))
+        if (!UtilMain.isBlockSolid(UtilClient.getBlockState(pos.add(0, 1, 0), player)))
             for (i in 0..10)
                 particleManager.addParticle(
                     effect,
@@ -216,7 +225,7 @@ object RoadmapClient : ClientModInitializer {
                     posZ + rand.nextDouble(),
                     0.0, 1.0, 0.0
                 )
-        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(0, -1, 0), player)))
+        if (!UtilMain.isBlockSolid(UtilClient.getBlockState(pos.add(0, -1, 0), player)))
             for (i in 0..10)
                 particleManager.addParticle(
                     effect,
@@ -225,7 +234,7 @@ object RoadmapClient : ClientModInitializer {
                     posZ + rand.nextDouble(),
                     0.0, -1.0, 0.0
                 )
-        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(0, 0, 1), player)))
+        if (!UtilMain.isBlockSolid(UtilClient.getBlockState(pos.add(0, 0, 1), player)))
             for (i in 0..10)
                 particleManager.addParticle(
                     effect,
@@ -234,7 +243,7 @@ object RoadmapClient : ClientModInitializer {
                     posZ + 1.1,
                     0.0, 0.0, 1.0
                 )
-        if (!UtilCommon.isBlockSolid(UtilClient.getBlockState(pos.add(0, 0, -1), player)))
+        if (!UtilMain.isBlockSolid(UtilClient.getBlockState(pos.add(0, 0, -1), player)))
             for (i in 0..10)
                 particleManager.addParticle(
                     effect,
@@ -246,7 +255,7 @@ object RoadmapClient : ClientModInitializer {
     }
 
     fun isUsingTool(player: ClientPlayerEntity): Boolean {
-        return UtilCommon.getRegistryName(player.mainHandStack) == Config["tool_item"]
+        return UtilMain.getRegistryName(player.mainHandStack) == Config["tool_item"]
     }
 
     fun getTargetedPos(player: ClientPlayerEntity): BlockPos? {
@@ -366,11 +375,10 @@ object RoadmapClient : ClientModInitializer {
         val endChunkCount = roadmap.chunks.count()
 
         val removedChunks = startChunkCount - endChunkCount
-        if (removedChunks > 0) {
+        if (removedChunks > 0)
             notifyPlayer("Removed $removedChunks ${if (removedChunks > 1) "chunks" else "chunk"} from scan data.", player)
-        } else {
+        else
             notifyPlayer("No chunks were removed from scan data.", player)
-        }
 
         updateParticleChunks(client, true)
     }
@@ -394,6 +402,13 @@ object RoadmapClient : ClientModInitializer {
             messagePlayer("Positions of all unscanned road tails sorted by distance: ${result.substring(2)}", player)
         else
             messagePlayer("Could not find any unscanned road tails.", player)
+    }
+
+    fun optimizeRoadmapData(client: MinecraftClient) {
+        val player = client.player ?: return
+
+        roadmap.cleanRoads()
+        messagePlayer("Cleaned roadmap data.", player)
     }
 
     fun reloadData(client: MinecraftClient) {
